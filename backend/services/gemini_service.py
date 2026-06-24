@@ -1,0 +1,444 @@
+"""
+Central Gemini API client for ShieldAI.
+
+Provides text analysis, vision analysis, audio transcription,
+and chat capabilities via Google's Gemini API.
+Each method has a graceful degradation fallback.
+"""
+
+import json
+import os
+import re
+from typing import Optional, Any
+
+from logging_config import get_logger
+
+logger = get_logger("shield_ai.gemini")
+
+# Try to import new Google GenAI SDK
+try:
+    from google import genai
+    from google.genai import types
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+    logger.warning("google_genai_not_installed", message="pip install google-genai")
+
+
+class GeminiService:
+    """
+    Central Gemini API client. Initializes once, reused across requests.
+    Falls back to keyword-based heuristics when API key is not configured.
+    """
+
+    def __init__(self, api_key: str = "", model_name: str = "gemini-2.0-flash"):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.client = None
+        self._available = False
+
+        if GENAI_AVAILABLE and api_key:
+            try:
+                self.client = genai.Client(api_key=api_key)
+                self._available = True
+                logger.info("gemini_initialized", model=model_name)
+            except Exception as e:
+                logger.error("gemini_init_failed", error=str(e))
+        else:
+            reason = "no API key" if GENAI_AVAILABLE else "SDK not installed"
+            logger.warning("gemini_unavailable", reason=reason, message="Using fallback heuristics")
+
+    @property
+    def is_available(self) -> bool:
+        return self._available
+
+    # ── Scam Text Analysis ───────────────────────────────────
+
+    async def analyze_scam_text(self, text: str, language: str = "en") -> dict:
+        """
+        Analyze text for scam patterns using Gemini or fallback heuristics.
+
+        Returns:
+            dict with: risk_score, risk_label, classification, scam_type,
+                       explanation, recommended_action
+        """
+        if self._available:
+            try:
+                return await self._gemini_scam_analysis(text, language)
+            except Exception as e:
+                logger.error("gemini_scam_analysis_failed", error=str(e), fallback=True)
+
+        return self._fallback_scam_analysis(text)
+
+    async def _gemini_scam_analysis(self, text: str, language: str) -> dict:
+        """Real Gemini API call for scam analysis."""
+        prompt = f"""You are an expert fraud detection AI for Indian law enforcement.
+Analyze the following text for scam patterns, especially digital arrest scams,
+financial fraud, KYC fraud, and customs scams common in India.
+
+Text to analyze:
+\"\"\"
+{text}
+\"\"\"
+
+Language: {language}
+
+Respond ONLY with a valid JSON object (no markdown, no code blocks) with these exact keys:
+{{
+    "risk_score": <float between 0.0 and 1.0, where 1.0 is definitely a scam>,
+    "risk_label": "<HIGH if risk_score >= 0.7, MEDIUM if >= 0.4, else LOW>",
+    "classification": "<one of: digital_arrest_scam, financial_fraud, kyc_fraud, customs_scam, impersonation_scam, lottery_scam, investment_scam, legitimate, unknown>",
+    "scam_type": "<specific scam pattern name or null>",
+    "explanation": "<2-3 sentence explanation of why this is or isn't a scam, in plain English>",
+    "recommended_action": "<what the person should do — specific, actionable advice>"
+}}"""
+
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.1,
+            ),
+        )
+
+        result = json.loads(response.text)
+        # Ensure risk_score is bounded
+        result["risk_score"] = max(0.0, min(1.0, float(result.get("risk_score", 0.5))))
+        return result
+
+    def _fallback_scam_analysis(self, text: str) -> dict:
+        """Keyword-based heuristic fallback for scam analysis."""
+        text_lower = text.lower()
+
+        # Weighted keyword groups
+        high_risk_keywords = {
+            "digital arrest": 0.35, "arrest warrant": 0.30, "cbi": 0.25,
+            "enforcement directorate": 0.25, "ed officer": 0.25,
+            "customs": 0.20, "money laundering": 0.30, "hawala": 0.30,
+            "narcotics": 0.25, "drug trafficking": 0.25,
+            "transfer money": 0.30, "send money immediately": 0.35,
+            "your aadhaar": 0.20, "your pan card": 0.20,
+            "account will be blocked": 0.25, "account frozen": 0.25,
+            "police case": 0.20, "fir registered": 0.20,
+            "video call verification": 0.25, "kyc expired": 0.25,
+            "rbi circular": 0.20, "trai": 0.20,
+            "sim will be blocked": 0.25, "legal action": 0.20,
+        }
+
+        medium_risk_keywords = {
+            "verify your identity": 0.10, "otp": 0.10, "click this link": 0.15,
+            "urgent": 0.10, "immediately": 0.10, "prize": 0.15,
+            "lottery": 0.20, "congratulations you won": 0.20,
+            "investment opportunity": 0.15, "guaranteed returns": 0.20,
+            "bank manager": 0.10, "insurance claim": 0.10,
+        }
+
+        score = 0.0
+        matched_keywords = []
+
+        for keyword, weight in high_risk_keywords.items():
+            if keyword in text_lower:
+                score += weight
+                matched_keywords.append(keyword)
+
+        for keyword, weight in medium_risk_keywords.items():
+            if keyword in text_lower:
+                score += weight
+                matched_keywords.append(keyword)
+
+        score = min(1.0, score)
+
+        # Determine classification
+        if any(k in text_lower for k in ["digital arrest", "arrest warrant", "cbi", "enforcement directorate"]):
+            classification = "digital_arrest_scam"
+            scam_type = "Digital Arrest Scam"
+        elif any(k in text_lower for k in ["kyc", "pan card", "aadhaar"]):
+            classification = "kyc_fraud"
+            scam_type = "KYC/Identity Fraud"
+        elif any(k in text_lower for k in ["customs", "parcel", "seized"]):
+            classification = "customs_scam"
+            scam_type = "Customs Seizure Scam"
+        elif any(k in text_lower for k in ["lottery", "prize", "won"]):
+            classification = "lottery_scam"
+            scam_type = "Lottery/Prize Scam"
+        elif any(k in text_lower for k in ["investment", "guaranteed returns", "trading"]):
+            classification = "investment_scam"
+            scam_type = "Investment Fraud"
+        elif score > 0.3:
+            classification = "financial_fraud"
+            scam_type = "General Financial Fraud"
+        else:
+            classification = "legitimate" if score < 0.2 else "unknown"
+            scam_type = None
+
+        if score >= 0.7:
+            risk_label = "HIGH"
+        elif score >= 0.4:
+            risk_label = "MEDIUM"
+        else:
+            risk_label = "LOW"
+
+        if matched_keywords:
+            explanation = f"Analysis detected the following risk indicators: {', '.join(matched_keywords[:5])}. "
+            if risk_label == "HIGH":
+                explanation += "This strongly matches known scam patterns used in India."
+            elif risk_label == "MEDIUM":
+                explanation += "Some elements match known fraud patterns. Exercise caution."
+            else:
+                explanation += "Low risk indicators detected."
+        else:
+            explanation = "No known scam patterns detected in this text."
+
+        actions = {
+            "HIGH": "DO NOT engage further. Do NOT transfer any money. Hang up immediately. Report to cybercrime.gov.in or call 1930.",
+            "MEDIUM": "Exercise caution. Verify the caller's identity independently. Do not share personal information or OTPs.",
+            "LOW": "This appears to be low risk, but remain vigilant. Never share OTPs or passwords over phone.",
+        }
+
+        return {
+            "risk_score": round(score, 3),
+            "risk_label": risk_label,
+            "classification": classification,
+            "scam_type": scam_type,
+            "explanation": explanation,
+            "recommended_action": actions[risk_label],
+        }
+
+    # ── Currency Image Analysis ──────────────────────────────
+
+    async def analyze_currency_image(self, image_bytes: bytes, denomination: Optional[int] = None) -> dict:
+        """
+        Analyze a currency image for authenticity using Gemini Vision.
+
+        Returns:
+            dict with: verdict, confidence, failed_features, analysis
+        """
+        if self._available:
+            try:
+                return await self._gemini_currency_analysis(image_bytes, denomination)
+            except Exception as e:
+                logger.error("gemini_currency_analysis_failed", error=str(e), fallback=True)
+
+        return self._fallback_currency_analysis(denomination)
+
+    async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int]) -> dict:
+        """Real Gemini Vision API call for currency analysis."""
+        denom_text = f"Rs {denomination}" if denomination else "unknown denomination"
+
+        prompt = f"""You are an expert currency authentication system for Indian Rupee notes.
+Analyze this image of an Indian currency note ({denom_text}) for authenticity.
+
+Check the following security features:
+1. Watermark - Mahatma Gandhi portrait watermark clarity and positioning
+2. Security Thread - Embedded security thread with "RBI" and denomination text
+3. Microprint - "RBI" microprint near the security thread
+4. Serial Number - Proper format, consistent font, no irregularities
+5. Colour-Shift Ink - Denomination numeral changes colour when tilted (for Rs 200, 500, 2000)
+6. Intaglio Print - Raised print feel on the Ashoka Pillar emblem
+7. Latent Image - Denomination numeral visible when note is held at eye level
+8. Bleed Lines - Raised lines on left and right edges for visually impaired
+
+Respond ONLY with a valid JSON object (no markdown, no code blocks):
+{{
+    "verdict": "<GENUINE or SUSPICIOUS or COUNTERFEIT>",
+    "confidence": <float between 0.0 and 1.0>,
+    "failed_features": [<list of security features that failed or are suspicious>],
+    "analysis": "<detailed 3-4 sentence analysis explaining findings>"
+}}"""
+
+        # Create image part for multimodal input
+        # Convert bytes to Part for google-genai
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=[prompt, image_part],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.1,
+            ),
+        )
+
+        result = json.loads(response.text)
+        result["confidence"] = max(0.0, min(1.0, float(result.get("confidence", 0.5))))
+        return result
+
+    def _fallback_currency_analysis(self, denomination: Optional[int] = None) -> dict:
+        """Fallback currency analysis when Gemini is unavailable."""
+        return {
+            "verdict": "SUSPICIOUS",
+            "confidence": 0.5,
+            "failed_features": ["automated_analysis_unavailable"],
+            "analysis": (
+                f"Automated AI analysis is currently unavailable. "
+                f"The image of the {'Rs ' + str(denomination) + ' ' if denomination else ''}"
+                f"note could not be verified. Please have the note physically inspected "
+                f"by a trained bank teller or use an RBI-approved detection device."
+            ),
+        }
+
+    # ── Audio Transcription ──────────────────────────────────
+
+    async def transcribe_audio(self, audio_bytes: bytes, mime_type: str = "audio/mpeg") -> str:
+        """
+        Transcribe audio using Gemini's native audio capabilities.
+
+        Returns:
+            Transcribed text string
+        """
+        if not self._available:
+            raise RuntimeError("Gemini API is not available. Cannot transcribe audio.")
+
+        try:
+            audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+            prompt = (
+                "Transcribe the following audio accurately. "
+                "If the audio is in Hindi or another Indian language, "
+                "provide the transcription in that language along with an English translation. "
+                "Return ONLY the transcription text, nothing else."
+            )
+
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, audio_part],
+                config=types.GenerateContentConfig(temperature=0.1),
+            )
+
+            transcript = response.text.strip()
+            logger.info("audio_transcribed", length=len(transcript))
+            return transcript
+
+        except Exception as e:
+            logger.error("audio_transcription_failed", error=str(e))
+            raise RuntimeError(f"Audio transcription failed: {str(e)}")
+
+    # ── Citizen Chat ─────────────────────────────────────────
+
+    async def chat_response(self, message: str, session_id: str, language: str = "en") -> dict:
+        """
+        Generate a chatbot response for the citizen fraud shield.
+
+        Returns:
+            dict with: response, risk_assessment (optional)
+        """
+        if self._available:
+            try:
+                return await self._gemini_chat(message, session_id, language)
+            except Exception as e:
+                logger.error("gemini_chat_failed", error=str(e), fallback=True)
+
+        return self._fallback_chat(message)
+
+    async def _gemini_chat(self, message: str, session_id: str, language: str) -> dict:
+        """Real Gemini chat response."""
+        prompt = f"""You are ShieldAI's Citizen Fraud Shield Assistant — a helpful, empathetic AI assistant
+that helps Indian citizens identify and report fraud, scams, and cybercrime.
+
+Your role:
+- Help citizens understand if they are being targeted by a scam
+- Provide clear, actionable safety advice
+- Guide them through the reporting process if needed
+- Be empathetic — many victims are elderly or technologically less sophisticated
+- ALWAYS recommend official channels: cybercrime.gov.in, helpline 1930, local police
+
+Language preference: {language}
+Session: {session_id}
+
+User message: {message}
+
+Respond with a valid JSON object (no markdown, no code blocks):
+{{
+    "response": "<your helpful response to the citizen, 2-4 sentences>",
+    "risk_assessment": {{
+        "detected_risk": <true or false>,
+        "risk_level": "<HIGH, MEDIUM, LOW, or NONE>",
+        "risk_type": "<scam type if detected, or null>"
+    }}
+}}"""
+
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.7,
+            ),
+        )
+
+        return json.loads(response.text)
+
+    def _fallback_chat(self, message: str) -> dict:
+        """Template-based fallback chat responses."""
+        message_lower = message.lower()
+
+        # Check for scam-related keywords
+        if any(k in message_lower for k in ["scam", "fraud", "arrest", "cbi", "police", "money"]):
+            return {
+                "response": (
+                    "I understand you may be dealing with a potential scam situation. "
+                    "Please do NOT transfer any money or share personal details like OTPs. "
+                    "If someone is claiming to be from CBI, Police, or any government agency and "
+                    "threatening arrest, this is a known 'Digital Arrest' scam. "
+                    "Report immediately at cybercrime.gov.in or call the helpline 1930."
+                ),
+                "risk_assessment": {
+                    "detected_risk": True,
+                    "risk_level": "HIGH",
+                    "risk_type": "potential_scam_inquiry",
+                },
+            }
+        elif any(k in message_lower for k in ["report", "complaint", "file", "fir"]):
+            return {
+                "response": (
+                    "To file a cybercrime complaint, you can: "
+                    "1) Visit cybercrime.gov.in and file an online complaint, "
+                    "2) Call the national cybercrime helpline at 1930, or "
+                    "3) Visit your nearest police station. "
+                    "You can also use the 'Report Fraud' feature in this app to submit details."
+                ),
+                "risk_assessment": None,
+            }
+        elif any(k in message_lower for k in ["hello", "hi", "help", "start"]):
+            return {
+                "response": (
+                    "Welcome to ShieldAI's Citizen Fraud Shield! I can help you: "
+                    "• Check if a call or message is a scam — just describe what happened "
+                    "• Report fraud or cybercrime "
+                    "• Get safety tips and resources. "
+                    "How can I help you today?"
+                ),
+                "risk_assessment": None,
+            }
+        else:
+            return {
+                "response": (
+                    "Thank you for reaching out. I'm here to help you with fraud-related concerns. "
+                    "You can describe a suspicious call or message you received, and I'll analyze it "
+                    "for scam patterns. If you need immediate help, call the cybercrime helpline at 1930."
+                ),
+                "risk_assessment": None,
+            }
+
+
+# Module-level singleton (initialized in main.py lifespan)
+_gemini_service: Optional[GeminiService] = None
+
+
+def get_gemini_service() -> GeminiService:
+    """Get the initialized GeminiService singleton."""
+    global _gemini_service
+    if _gemini_service is None:
+        from config import settings
+        _gemini_service = GeminiService(
+            api_key=settings.GEMINI_API_KEY,
+            model_name=settings.GEMINI_MODEL,
+        )
+    return _gemini_service
+
+
+def init_gemini_service(api_key: str, model_name: str) -> GeminiService:
+    """Initialize the GeminiService singleton."""
+    global _gemini_service
+    _gemini_service = GeminiService(api_key=api_key, model_name=model_name)
+    return _gemini_service

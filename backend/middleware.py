@@ -1,0 +1,133 @@
+"""
+Production middleware stack for ShieldAI backend.
+
+Provides: request ID injection, request logging, rate limiting,
+and global exception handling.
+"""
+
+import time
+import uuid
+from collections import defaultdict
+from typing import Callable
+
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from logging_config import get_logger, request_id_ctx
+
+logger = get_logger("shield_ai.middleware")
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """
+    Generates a UUID for each request, adds it to response headers
+    and injects it into the logging context for tracing.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        request_id = str(uuid.uuid4())
+        request_id_ctx.set(request_id)
+        request.state.request_id = request_id
+
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """
+    Logs every request with method, path, status code, and duration.
+    Skips health check and docs endpoints to reduce noise.
+    """
+
+    SKIP_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/favicon.ico"}
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.url.path in self.SKIP_PATHS:
+            return await call_next(request)
+
+        start_time = time.monotonic()
+        response = await call_next(request)
+        duration_ms = round((time.monotonic() - start_time) * 1000, 2)
+
+        logger.info(
+            "request_completed",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+            client_ip=request.client.host if request.client else "unknown",
+        )
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """
+    In-memory token bucket rate limiter per client IP.
+    Configurable requests per window. Returns 429 when exceeded.
+    """
+
+    def __init__(self, app: FastAPI, max_requests: int = 60, window_seconds: int = 60):
+        super().__init__(app)
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._buckets: dict[str, list[float]] = defaultdict(list)
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip rate limiting for health checks and docs
+        if request.url.path in {"/health", "/docs", "/openapi.json", "/redoc"}:
+            return await call_next(request)
+
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+
+        # Clean expired entries
+        self._buckets[client_ip] = [
+            t for t in self._buckets[client_ip]
+            if now - t < self.window_seconds
+        ]
+
+        if len(self._buckets[client_ip]) >= self.max_requests:
+            logger.warning(
+                "rate_limit_exceeded",
+                client_ip=client_ip,
+                path=request.url.path,
+            )
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "rate_limit_exceeded",
+                    "message": f"Too many requests. Maximum {self.max_requests} requests per {self.window_seconds} seconds.",
+                    "retry_after_seconds": self.window_seconds,
+                },
+            )
+
+        self._buckets[client_ip].append(now)
+        return await call_next(request)
+
+
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Catches unhandled exceptions. Returns structured JSON error.
+    Never exposes stack traces to clients.
+    """
+    request_id = getattr(request.state, "request_id", "unknown")
+
+    logger.error(
+        "unhandled_exception",
+        error_type=type(exc).__name__,
+        error_message=str(exc),
+        path=request.url.path,
+        method=request.method,
+        exc_info=True,
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_server_error",
+            "message": "An unexpected error occurred. Please try again later.",
+            "request_id": request_id,
+        },
+    )
