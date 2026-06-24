@@ -10,8 +10,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from logging_config import get_logger
+from config import settings
 from models import task_store
 from services.gemini_service import get_gemini_service
+from services.storage_service import get_storage_service
+from services.kafka_producer import producer_service
 
 logger = get_logger("shield_ai.currency")
 
@@ -164,12 +167,13 @@ class CurrencyAnalyzer:
         rect[3] = pts[np.argmax(d)]
         return rect
 
-    def start_verification(self, image_bytes: bytes, denomination: Optional[int] = None, location: Optional[str] = None) -> str:
+    async def start_verification(self, image_bytes: bytes, content_type: str, denomination: Optional[int] = None, location: Optional[str] = None) -> str:
         """
-        Create a task for async currency verification.
+        Create a task for async currency verification via Kafka.
 
         Args:
             image_bytes: Raw image bytes
+            content_type: MIME type of the image
             denomination: Optional currency denomination
             location: Optional location string
 
@@ -178,41 +182,43 @@ class CurrencyAnalyzer:
         """
         task_id = task_store.create_task(task_type="currency_verify")
 
-        # Store image bytes and metadata for the background task
-        # The actual processing happens in run_verification()
-        self._pending_tasks = getattr(self, '_pending_tasks', {})
-        self._pending_tasks[task_id] = {
-            "image_bytes": image_bytes,
+        # Upload image to Firebase Storage
+        storage = get_storage_service()
+        file_url = storage.upload_file(image_bytes, content_type, folder="currency_scans")
+
+        # Publish to Kafka
+        message = {
+            "task_id": task_id,
+            "file_url": file_url,
             "denomination": denomination,
             "location": location,
         }
+        await producer_service.publish(settings.KAFKA_TOPIC_CURRENCY, message)
 
-        logger.info("verification_started", task_id=task_id, denomination=denomination)
+        logger.info("verification_queued_to_kafka", task_id=task_id, denomination=denomination)
         return task_id
 
-    async def run_verification(self, task_id: str) -> None:
+    async def run_verification(self, task_id: str, file_url: str = None, denomination: Optional[int] = None, location: Optional[str] = None) -> None:
         """
-        Execute the actual currency verification (called as BackgroundTask).
+        Execute the actual currency verification (called by Kafka worker).
 
         Args:
             task_id: The task ID to update
+            file_url: Firebase storage URL of the image
+            denomination: Optional denomination
+            location: Optional location
         """
         try:
             task_store.update_task(task_id, status="processing")
 
-            # Retrieve stored task data
-            self._pending_tasks = getattr(self, '_pending_tasks', {})
-            task_data = self._pending_tasks.pop(task_id, None)
-
-            if not task_data:
-                task_store.update_task(task_id, status="failed", error="Task data not found")
+            if not file_url:
+                task_store.update_task(task_id, status="failed", error="Missing file_url in task data")
                 return
 
-            image_bytes = task_data["image_bytes"]
-            denomination = task_data.get("denomination")
-            location = task_data.get("location")
+            storage = get_storage_service()
+            image_bytes = storage.download_file(file_url)
 
-            # 1. Preprocess image with OpenCV
+            # 1. Preprocess Image
             processed_bytes = self.preprocess_image(image_bytes)
 
             # 2. Analyze with Gemini Vision

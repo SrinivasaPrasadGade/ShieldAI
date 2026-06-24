@@ -10,7 +10,7 @@ Endpoints:
 
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from models.schemas import (
     CurrencyVerifyResponse,
@@ -28,7 +28,6 @@ router = APIRouter(prefix="/api/currency", tags=["Currency Detection"])
 
 @router.post("/verify", response_model=CurrencyVerifyResponse, status_code=202)
 async def verify_currency(
-    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     denomination: Optional[int] = Form(None),
     location: Optional[str] = Form(None),
@@ -70,10 +69,7 @@ async def verify_currency(
         )
 
     analyzer = get_currency_analyzer()
-    task_id = analyzer.start_verification(image_bytes, denomination, location)
-
-    # Dispatch background processing
-    background_tasks.add_task(analyzer.run_verification, task_id)
+    task_id = await analyzer.start_verification(image_bytes, content_type, denomination, location)
 
     return {"task_id": task_id}
 

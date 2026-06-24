@@ -8,9 +8,11 @@ Provides network queries, entity lookups, cluster management, and stats.
 from typing import Optional, List
 from collections import deque
 
+from config import settings
 from logging_config import get_logger
 from models.database import get_sqlite_connection
 from models import task_store
+from services.kafka_producer import producer_service
 
 logger = get_logger("shield_ai.graph")
 
@@ -268,9 +270,9 @@ class GraphService:
 
         return clusters
 
-    def start_evidence_package(self, cluster_id: int) -> str:
+    async def start_evidence_package(self, cluster_id: int) -> str:
         """
-        Start async evidence package generation.
+        Start async evidence package generation via Kafka.
 
         Args:
             cluster_id: Cluster to generate evidence for
@@ -279,7 +281,14 @@ class GraphService:
             task_id for polling
         """
         task_id = task_store.create_task(task_type="evidence_package")
-        logger.info("evidence_package_started", task_id=task_id, cluster_id=cluster_id)
+        
+        message = {
+            "task_id": task_id,
+            "cluster_id": cluster_id,
+        }
+        await producer_service.publish(settings.KAFKA_TOPIC_EVIDENCE, message)
+        
+        logger.info("evidence_package_queued_to_kafka", task_id=task_id, cluster_id=cluster_id)
         return task_id
 
     def get_stats(self) -> dict:

@@ -12,7 +12,7 @@ Endpoints:
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query
 
 from models.schemas import (
     GraphNetworkResponse,
@@ -93,7 +93,7 @@ async def get_clusters():
 
 
 @router.post("/evidence-package/{cluster_id}", status_code=202)
-async def start_evidence_package(cluster_id: int, background_tasks: BackgroundTasks):
+async def start_evidence_package(cluster_id: int):
     """
     Start async evidence package generation for a fraud cluster.
 
@@ -102,11 +102,7 @@ async def start_evidence_package(cluster_id: int, background_tasks: BackgroundTa
     and key findings.
     """
     service = get_graph_service()
-    task_id = service.start_evidence_package(cluster_id)
-
-    # Dispatch background task
-    evidence_svc = get_evidence_service()
-    background_tasks.add_task(evidence_svc.generate_evidence_package, cluster_id, task_id)
+    task_id = await service.start_evidence_package(cluster_id)
 
     return {"task_id": task_id}
 

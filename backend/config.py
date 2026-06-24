@@ -33,10 +33,16 @@ class Settings(BaseSettings):
         """Parse CORS_ORIGINS string into a list."""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
-    # ── Database ─────────────────────────────────────────────────
+    # ── Database & Storage ───────────────────────────────────────
     SQLITE_DB_PATH: str = "backend/shield_ai.db"
     FIREBASE_CREDENTIALS_PATH: str = "backend/firebase-credentials.json"
+    FIREBASE_STORAGE_BUCKET: str = "shieldai-hackathon.appspot.com"  # Replace with actual bucket name
 
+    # ── Kafka ────────────────────────────────────────────────────
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_TOPIC_CURRENCY: str = "currency_verification"
+    KAFKA_TOPIC_EVIDENCE: str = "evidence_packaging"
+    
     # ── AI / ML ──────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
