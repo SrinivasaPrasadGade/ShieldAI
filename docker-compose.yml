@@ -1,57 +1,82 @@
-version: '3.8'
+# docker-compose.yml
+version: '3.9'
 
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+  redis:
+    image: redis:7-alpine
     ports:
-      - "2181:2181"
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   api:
     build:
-      context: .
-      dockerfile: backend/Dockerfile.api
+      context: ./backend
+      dockerfile: Dockerfile.api
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SQLITE_DB_PATH=shield_ai.db
-      - FIREBASE_CREDENTIALS_PATH=firebase-credentials.json
-    depends_on:
-      - kafka
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - REDIS_URL=redis://redis:6379
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
     volumes:
-      - ./backend:/app/backend
+      - ./backend/firebase-credentials.json:/app/firebase-credentials.json
+      - ./backend/data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  realtime:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.realtime
+    ports:
+      - "5001:5001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+    volumes:
+      - ./backend/firebase-credentials.json:/app/firebase-credentials.json
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: python realtime_server.py
 
   worker:
     build:
-      context: .
-      dockerfile: backend/Dockerfile.api
-    command: python /app/backend/worker.py
-    env_file:
-      - .env
+      context: ./backend
+      dockerfile: Dockerfile.api
     environment:
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SQLITE_DB_PATH=shield_ai.db
-      - FIREBASE_CREDENTIALS_PATH=firebase-credentials.json
-    depends_on:
-      - kafka
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - REDIS_URL=redis://redis:6379
     volumes:
-      - ./backend:/app/backend
+      - ./backend/firebase-credentials.json:/app/firebase-credentials.json
+      - ./backend/data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_REALTIME_URL=http://localhost:5001
+      - VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
+      - VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+    depends_on:
+      - api
+      - realtime
+    command: npm run dev -- --host 0.0.0.0

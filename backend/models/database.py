@@ -124,7 +124,13 @@ def get_firestore_client():
             except ValueError:
                 # App already initialized
                 pass
+            except Exception as e:
+                print(f"Warning: Failed to initialize Firebase ADC: {e}")
         
-        _firestore_client = firestore.client()
-        
+        try:
+            _firestore_client = firestore.client()
+        except Exception as e:
+            print(f"Warning: Firestore client could not be initialized: {e}")
+            _firestore_client = None
+            
     return _firestore_client

@@ -15,13 +15,8 @@ from services.gemini_service import get_gemini_service
 
 logger = get_logger("shield_ai.scam_detector")
 
-# Try to import transformers for BERT zero-shot classification
-try:
-    from transformers import pipeline as hf_pipeline
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    logger.warning("transformers_not_available", message="BERT scoring disabled. pip install transformers torch")
+# We defer the import of transformers to avoid hanging the API on startup when BERT is disabled.
+TRANSFORMERS_AVAILABLE = True
 
 
 # Scam classification candidate labels for zero-shot
@@ -55,6 +50,7 @@ class ScamDetector:
     def _init_bert(self):
         """Lazy-load the BERT zero-shot classification pipeline."""
         try:
+            from transformers import pipeline as hf_pipeline
             logger.info("bert_loading", model=self._bert_model_name)
             self._bert_pipeline = hf_pipeline(
                 "zero-shot-classification",
