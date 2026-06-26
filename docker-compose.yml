@@ -70,7 +70,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     ports:
-      - "5174:5174"
+      - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:8000
       - VITE_REALTIME_URL=http://localhost:5001
