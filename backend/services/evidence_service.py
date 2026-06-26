@@ -148,6 +148,16 @@ class EvidenceService:
                     f"Network linked to {len(linked_reports)} fraud report(s)"
                 )
 
+            # 5.5 Generate Gemini Text Synthesis report
+            from services.gemini_service import get_gemini_service
+            gemini_svc = get_gemini_service()
+            try:
+                synthesis = await gemini_svc.generate_evidence_package(evidence)
+                evidence["gemini_synthesis"] = synthesis
+            except Exception as e:
+                logger.error("evidence_synthesis_failed", error=str(e))
+                evidence["gemini_synthesis"] = "Failed to generate AI synthesis report."
+
             # 6. Store result
             task_store.update_task(task_id, status="complete", result=evidence)
 
