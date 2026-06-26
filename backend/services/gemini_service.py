@@ -24,6 +24,132 @@ except ImportError:
     GENAI_AVAILABLE = False
     logger.warning("google_genai_not_installed", message="pip install google-genai")
 
+# ── Centralized System Prompts (Section 13) ─────────────────
+
+SCAM_DETECTION_SYSTEM_PROMPT = """
+You are ShieldAI, an expert fraud detection system for India's Ministry of Home Affairs.
+Your task is to analyse text descriptions of phone calls or messages and determine if they 
+represent a "Digital Arrest Scam" or other financial fraud targeting Indian citizens.
+
+KNOWN SCAM PATTERNS you must detect:
+1. DIGITAL ARREST: Caller claims to be from CBI, ED, Customs, TRAI, RBI, or Police.
+   Accuses victim of money laundering, drug trafficking, or illegal parcels.
+   Threatens immediate arrest unless "verification money" is transferred.
+   Often involves multi-day video call "custody."
+
+2. KYC FRAUD: Claims to be from a bank or TRAI. Says KYC is expired. 
+   Sends OTP and asks victim to share it. Drains account.
+
+3. CUSTOMS SEIZURE: Claims a parcel with victim's name was seized at airport 
+   containing drugs/foreign currency. Demands settlement payment.
+
+4. INVESTMENT FRAUD: Fake stock tips, WhatsApp groups, promises of 3-5x returns.
+   Platforms that let you see "profits" but block withdrawals.
+
+ENTITIES to extract: agency names, phone numbers, amounts mentioned, 
+transfer methods (NEFT/UPI/crypto), duration of interaction.
+
+You must respond ONLY with a valid JSON object in this exact structure:
+{
+  "is_fraud": boolean,
+  "confidence": float between 0.0 and 1.0,
+  "fraud_type": "digital_arrest" | "kyc_fraud" | "customs_seizure" | "investment_fraud" | "other" | null,
+  "agency_impersonated": string or null,
+  "risk_level": "HIGH" | "MEDIUM" | "LOW",
+  "key_red_flags": [list of specific phrases or patterns that indicate fraud],
+  "extracted_entities": {
+    "phone_numbers": [],
+    "amounts_mentioned": [],
+    "transfer_methods": []
+  },
+  "explanation": "2-3 sentence plain-language explanation for the citizen",
+  "recommended_action": "Exact step-by-step instructions for the citizen right now"
+}
+"""
+
+CURRENCY_ANALYSIS_SYSTEM_PROMPT = """
+You are a currency authentication expert trained by the Reserve Bank of India (RBI).
+You are analysing an uploaded image of an Indian currency note to determine its authenticity.
+
+For Indian currency notes, check for these security features:
+- INTAGLIO PRINTING: Raised print on denomination numerals, RBI Governor's signature
+- SECURITY THREAD: Embedded windowed thread reading "BHARAT" and "RBI" alternately
+- WATERMARK: Mahatma Gandhi portrait watermark visible when held to light
+- MICROPRINTING: Tiny "BHARAT" and "INDIA" text on the security thread
+- NUMBER PANEL: Ascending size numerals on the left, uniform size on the right
+- OPTICALLY VARIABLE INK: Bottom-right numeral shifts from green to blue when tilted
+- COLOUR SHIFT INK: Present on Rs 500 note in the numeral "500"
+- LATENT IMAGE: Vertical band with "RBI" visible at 45 degrees on the right of Gandhi portrait
+- SERIAL NUMBER FORMAT: For Rs 500: format like "1AA 000000" or "2AB 000000"
+- PAPER QUALITY: Currency paper has red and blue fibers embedded randomly
+
+Respond ONLY with a valid JSON object:
+{
+  "denomination_detected": int or null,
+  "verdict": "GENUINE" | "SUSPICIOUS" | "COUNTERFEIT" | "UNCLEAR_IMAGE",
+  "confidence": float between 0.0 and 1.0,
+  "features_checked": {
+    "intaglio_printing": "PASS" | "FAIL" | "UNCLEAR",
+    "security_thread": "PASS" | "FAIL" | "UNCLEAR",
+    "watermark": "PASS" | "FAIL" | "UNCLEAR",
+    "microprinting": "PASS" | "FAIL" | "UNCLEAR",
+    "serial_number_format": "PASS" | "FAIL" | "UNCLEAR",
+    "colour_shift_ink": "PASS" | "FAIL" | "UNCLEAR",
+    "paper_quality": "PASS" | "FAIL" | "UNCLEAR"
+  },
+  "failed_features": [list of feature names that failed],
+  "analysis_narrative": "Detailed description of what you observed",
+  "action_recommended": "What the person holding this note should do right now"
+}
+"""
+
+CITIZEN_SHIELD_SYSTEM_PROMPT = """
+You are ShieldAI's Citizen Fraud Shield, a friendly and calm assistant helping Indian 
+citizens determine if they are being scammed. You speak with warmth and reassurance —
+many people reaching out to you are frightened, embarrassed, or mid-crisis.
+
+Your personality: calm, clear, non-judgmental, authoritative on fraud patterns.
+
+BEHAVIOUR RULES:
+1. Always detect the language of the user's message and respond in THE SAME LANGUAGE.
+   Supported: Hindi, Telugu, Tamil, Kannada, Malayalam, Bengali, Marathi, Gujarati, 
+   Punjabi, Odia, Assamese, English.
+2. Never shame the citizen for falling for a scam — fraudsters are sophisticated professionals.
+3. If the person seems to be in an ACTIVE SCAM right now (present tense, happening now):
+   - Immediately tell them to HANG UP / CLOSE the app / disconnect
+   - Tell them NOT to transfer money
+   - Tell them it is definitely a scam
+   - Give NCRB Cybercrime Portal: cybercrime.gov.in | Helpline: 1930
+4. Always end with the NCRB reporting link and Cyber Helpline 1930.
+5. Extract any phone numbers, agency names, or amounts mentioned and flag them.
+
+NCRB Cybercrime Portal: https://cybercrime.gov.in
+National Cyber Helpline: 1930
+"""
+
+EVIDENCE_PACKAGE_PROMPT = """
+You are a forensic intelligence analyst at India's National Cyber Crime Reporting Portal.
+Based on the fraud intelligence data provided, generate a structured, court-admissible 
+intelligence package for the law enforcement agency investigating this fraud ring.
+
+The package must be professional, factual, and suitable for submission to a magistrate.
+Use formal language. Do not speculate — only report what the data shows.
+
+Structure your output as:
+1. EXECUTIVE SUMMARY (3-5 sentences)
+2. FRAUD RING PROFILE (operation type, geographic reach, estimated victim count)
+3. KEY ENTITIES (phone numbers, accounts, devices — with their roles in the ring)
+4. VICTIM IMPACT ASSESSMENT (estimated financial damage, number of victims)
+5. TRANSACTION PATTERN ANALYSIS (how money flows through the network)
+6. GEOGRAPHIC INTELLIGENCE (where complaints originated, where money went)
+7. RECOMMENDED LAW ENFORCEMENT ACTIONS
+8. DATA SOURCES AND COLLECTION METHODOLOGY
+9. CONFIDENCE ASSESSMENT (what is certain vs. inferred)
+
+Intelligence Data:
+{intelligence_data}
+"""
+
 
 class GeminiService:
     """
@@ -72,31 +198,12 @@ class GeminiService:
 
     async def _gemini_scam_analysis(self, text: str, language: str) -> dict:
         """Real Gemini API call for scam analysis."""
-        prompt = f"""You are an expert fraud detection AI for Indian law enforcement.
-Analyze the following text for scam patterns, especially digital arrest scams,
-financial fraud, KYC fraud, and customs scams common in India.
-
-Text to analyze:
-\"\"\"
-{text}
-\"\"\"
-
-Language: {language}
-
-Respond ONLY with a valid JSON object (no markdown, no code blocks) with these exact keys:
-{{
-    "risk_score": <float between 0.0 and 1.0, where 1.0 is definitely a scam>,
-    "risk_label": "<HIGH if risk_score >= 0.7, MEDIUM if >= 0.4, else LOW>",
-    "classification": "<one of: digital_arrest_scam, financial_fraud, kyc_fraud, customs_scam, impersonation_scam, lottery_scam, investment_scam, legitimate, unknown>",
-    "scam_type": "<specific scam pattern name or null>",
-    "explanation": "<2-3 sentence explanation of why this is or isn't a scam, in plain English>",
-    "recommended_action": "<what the person should do — specific, actionable advice>"
-}}"""
-
+        contents = f"Analyze this report (Language hint: {language}):\n\n{text}"
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
+                system_instruction=SCAM_DETECTION_SYSTEM_PROMPT,
                 response_mime_type="application/json",
                 temperature=0.1,
             ),
@@ -224,37 +331,17 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) with these e
 
     async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int]) -> dict:
         """Real Gemini Vision API call for currency analysis."""
-        denom_text = f"Rs {denomination}" if denomination else "unknown denomination"
+        denom_hint = f"The user believes this is a Rs {denomination} note." if denomination else ""
+        contents_text = f"Analyse this Indian currency note image. {denom_hint} Check all security features carefully."
 
-        prompt = f"""You are an expert currency authentication system for Indian Rupee notes.
-Analyze this image of an Indian currency note ({denom_text}) for authenticity.
-
-Check the following security features:
-1. Watermark - Mahatma Gandhi portrait watermark clarity and positioning
-2. Security Thread - Embedded security thread with "RBI" and denomination text
-3. Microprint - "RBI" microprint near the security thread
-4. Serial Number - Proper format, consistent font, no irregularities
-5. Colour-Shift Ink - Denomination numeral changes colour when tilted (for Rs 200, 500, 2000)
-6. Intaglio Print - Raised print feel on the Ashoka Pillar emblem
-7. Latent Image - Denomination numeral visible when note is held at eye level
-8. Bleed Lines - Raised lines on left and right edges for visually impaired
-
-Respond ONLY with a valid JSON object (no markdown, no code blocks):
-{{
-    "verdict": "<GENUINE or SUSPICIOUS or COUNTERFEIT>",
-    "confidence": <float between 0.0 and 1.0>,
-    "failed_features": [<list of security features that failed or are suspicious>],
-    "analysis": "<detailed 3-4 sentence analysis explaining findings>"
-}}"""
-
-        # Create image part for multimodal input
         # Convert bytes to Part for google-genai
         image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
-            contents=[prompt, image_part],
+            contents=[contents_text, image_part],
             config=types.GenerateContentConfig(
+                system_instruction=CURRENCY_ANALYSIS_SYSTEM_PROMPT,
                 response_mime_type="application/json",
                 temperature=0.1,
             ),
@@ -332,35 +419,13 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks):
 
     async def _gemini_chat(self, message: str, session_id: str, language: str) -> dict:
         """Real Gemini chat response."""
-        prompt = f"""You are ShieldAI's Citizen Fraud Shield Assistant — a helpful, empathetic AI assistant
-that helps Indian citizens identify and report fraud, scams, and cybercrime.
-
-Your role:
-- Help citizens understand if they are being targeted by a scam
-- Provide clear, actionable safety advice
-- Guide them through the reporting process if needed
-- Be empathetic — many victims are elderly or technologically less sophisticated
-- ALWAYS recommend official channels: cybercrime.gov.in, helpline 1930, local police
-
-Language preference: {language}
-Session: {session_id}
-
-User message: {message}
-
-Respond with a valid JSON object (no markdown, no code blocks):
-{{
-    "response": "<your helpful response to the citizen, 2-4 sentences>",
-    "risk_assessment": {{
-        "detected_risk": <true or false>,
-        "risk_level": "<HIGH, MEDIUM, LOW, or NONE>",
-        "risk_type": "<scam type if detected, or null>"
-    }}
-}}"""
+        contents = f"Session ID: {session_id}\nLanguage preference: {language}\nUser message: {message}"
 
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
+                system_instruction=CITIZEN_SHIELD_SYSTEM_PROMPT,
                 response_mime_type="application/json",
                 temperature=0.7,
             ),
@@ -419,6 +484,58 @@ Respond with a valid JSON object (no markdown, no code blocks):
                 ),
                 "risk_assessment": None,
             }
+
+    # ── Evidence Package Synthesis ───────────────────────────
+
+    async def generate_evidence_package(self, intelligence_data: dict) -> str:
+        """
+        Generate a structured, court-admissible evidence package summary
+        using Gemini.
+        """
+        if self._available:
+            try:
+                prompt = EVIDENCE_PACKAGE_PROMPT.format(
+                    intelligence_data=json.dumps(intelligence_data, indent=2)
+                )
+                response = await self.client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(temperature=0.1),
+                )
+                return response.text.strip()
+            except Exception as e:
+                logger.error("gemini_evidence_package_failed", error=str(e), fallback=True)
+
+        return self._fallback_evidence_package(intelligence_data)
+
+    def _fallback_evidence_package(self, intelligence_data: dict) -> str:
+        """Fallback text summary when Gemini is offline."""
+        cluster = intelligence_data.get("cluster", {})
+        summary = intelligence_data.get("summary", {})
+        key_findings = intelligence_data.get("key_findings", [])
+        
+        findings_str = "\n".join(f"- {f}" for f in key_findings)
+        
+        cluster_name = cluster.get('name') or cluster.get('cluster_name') or 'Unknown'
+        
+        return f"""FORENSIC INTELLIGENCE REPORT (FALLBACK METHOD)
+==================================================
+1. EXECUTIVE SUMMARY
+This intelligence package details the coordinated activity of fraud ring {cluster_name}.
+The network encompasses {summary.get('total_entities', 0)} entities linked by {summary.get('total_relationships', 0)} connections.
+
+2. FRAUD RING PROFILE
+- Cluster ID: {cluster.get('id', 'N/A')}
+- Risk Level: {cluster.get('risk_level', 'Unknown')}
+- Operation Type: {cluster.get('operation_type', 'Unknown')}
+- Geographic Reach: {cluster.get('geographic_span', 'Unknown')}
+
+3. KEY FINDINGS
+{findings_str}
+
+4. CONCLUSION
+This fallback report compiles direct database indicators. Standardize with full AI-synthesized analysis once Gemini is online.
+"""
 
 
 # Module-level singleton (initialized in main.py lifespan)
