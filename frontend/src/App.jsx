@@ -1,12 +1,145 @@
-import React from 'react'
+// frontend/src/App.jsx
+import React, { useState, useEffect } from 'react';
+import { TopBar } from './components/layout/TopBar';
+import { AlertFeed } from './components/layout/AlertFeed';
+import { GeospatialMap } from './components/features/GeospatialMap';
+import { FraudNetworkGraph } from './components/features/FraudNetworkGraph';
+import { CitizenChat } from './components/features/CitizenChat';
+import { CurrencyChecker } from './components/features/CurrencyChecker';
+import { useSocket } from './hooks/useSocket';
+import { BellRing, ShieldAlert, X } from 'lucide-react';
 
 function App() {
+  const [activeView, setActiveView] = useState('dashboard');
+  const [activeAlert, setActiveAlert] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastData, setToastData] = useState(null);
+
+  const { alerts, feed, connected, latestToast, setLatestToast } = useSocket('law_enforcement');
+
+  // Trigger real-time toast notifications
+  useEffect(() => {
+    if (latestToast) {
+      setToastData(latestToast);
+      setShowToast(true);
+      setActiveAlert(latestToast);
+      
+      // Auto-dismiss after 5s
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 6000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [latestToast]);
+
+  const handleAlertClick = (alert) => {
+    setActiveAlert(alert);
+  };
+
+  const handleToastClick = () => {
+    setActiveView('dashboard');
+    if (toastData) {
+      setActiveAlert(toastData);
+    }
+    setShowToast(false);
+  };
+
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>ShieldAI Local Environment</h1>
-      <p>Your frontend is now running correctly!</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <TopBar 
+        activeView={activeView} 
+        onViewChange={setActiveView} 
+        isRealtimeConnected={connected} 
+      />
+
+      {/* Main Container */}
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        
+        {/* Realtime Toast Notification */}
+        {showToast && toastData && (
+          <div 
+            onClick={handleToastClick}
+            className="animate-pulse-glow"
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              width: '320px',
+              background: 'rgba(239, 68, 68, 0.95)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              color: '#fff',
+              zIndex: 1000,
+              cursor: 'pointer',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                <ShieldAlert size={16} />
+                🚨 HIGH RISK ALERT
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowToast(false); }}
+                style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <strong style={{ fontSize: '0.9rem', display: 'block' }}>{toastData.title}</strong>
+            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+              Location: {toastData.location?.city || 'Unknown'} | Risk Score: {toastData.severity}
+            </div>
+          </div>
+        )}
+
+        {/* View Switch */}
+        {activeView === 'dashboard' ? (
+          /* Law Enforcement View */
+          <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%', padding: '20px', gap: '20px', overflow: 'hidden' }}>
+            {/* Left Feed */}
+            <div style={{ height: '100%', overflow: 'hidden' }}>
+              <AlertFeed 
+                alerts={feed} 
+                onAlertClick={handleAlertClick} 
+                activeAlertId={activeAlert?.id} 
+              />
+            </div>
+
+            {/* Main grid panels */}
+            <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: '20px', height: '100%', overflow: 'hidden' }}>
+              {/* Geospatial Map */}
+              <div style={{ overflow: 'hidden' }}>
+                <GeospatialMap activeAlert={activeAlert} />
+              </div>
+              {/* Graph Visualizer */}
+              <div style={{ overflow: 'hidden' }}>
+                <FraudNetworkGraph selectedCluster={null} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Citizen View */
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', height: '100%', padding: '20px', gap: '20px', overflow: 'auto' }}>
+            {/* Chatbot Column */}
+            <div style={{ minHeight: '500px' }}>
+              <CitizenChat />
+            </div>
+            
+            {/* Counterfeit Checker Column */}
+            <div style={{ minHeight: '500px' }}>
+              <CurrencyChecker />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
