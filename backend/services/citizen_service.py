@@ -123,11 +123,30 @@ class CitizenService:
         }
 
         try:
-            self.db.collection("fraud_reports").document(report_id).set(report_data)
-            logger.info("citizen_report_created", report_id=report_id, reference=reference_number)
+            if self.db is not None:
+                self.db.collection("fraud_reports").document(report_id).set(report_data)
+                logger.info("citizen_report_created", report_id=report_id, reference=reference_number)
+            else:
+                logger.warning("firestore_offline_report_not_saved", report_id=report_id)
+
+            # Smart Upgrade: Add report to fraud network graph in SQLite
+            try:
+                from services.graph_service import get_graph_service
+                graph_svc = get_graph_service()
+                graph_svc.add_report_to_graph(
+                    report_id=report_id,
+                    phone_numbers=[phone_number] if phone_number else [],
+                    account_numbers=[],
+                    description=description
+                )
+                logger.info("citizen_report_added_to_graph", report_id=report_id)
+            except Exception as graph_err:
+                logger.error("citizen_report_graph_addition_failed", error=str(graph_err))
+
         except Exception as e:
             logger.error("citizen_report_creation_failed", error=str(e))
-            raise
+            if self.db is not None:
+                raise
 
         next_steps = [
             f"Your report has been submitted with reference number {reference_number}.",

@@ -37,7 +37,7 @@ class AlertService:
         location: Optional[dict] = None,
     ) -> str:
         """
-        Create a new alert in Firestore.
+        Create a new alert in Firestore and publish to Redis.
 
         Args:
             alert_type: scam_detected, ficn_detected, fraud_ring_identified, new_hotspot
@@ -51,6 +51,10 @@ class AlertService:
         Returns:
             Generated alert ID
         """
+        import os
+        import json
+        import redis
+
         alert_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
@@ -67,12 +71,30 @@ class AlertService:
             "created_at": now,
         }
 
+        # 1. Store in Firestore (if available)
         try:
-            self.db.collection("alerts").document(alert_id).set(alert_data)
-            logger.info("alert_created", alert_id=alert_id, type=alert_type, severity=severity)
+            if self.db is not None:
+                self.db.collection("alerts").document(alert_id).set(alert_data)
+                logger.info("alert_created", alert_id=alert_id, type=alert_type, severity=severity)
+            else:
+                logger.warning("firestore_offline_alert_not_saved", alert_id=alert_id)
         except Exception as e:
             logger.error("alert_creation_failed", error=str(e))
-            raise
+            # Don't raise in local dev if Firestore connection fails, but let's log it
+            if self.db is not None:
+                raise
+
+        # 2. Publish to Redis pub/sub for real-time dashboard updates
+        try:
+            redis_alert = alert_data.copy()
+            redis_alert["created_at"] = now.isoformat()
+            
+            redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+            r = redis.Redis.from_url(redis_url)
+            r.publish("new_alerts", json.dumps(redis_alert))
+            logger.info("alert_published_to_redis", alert_id=alert_id)
+        except Exception as re:
+            logger.error("redis_publish_failed", error=str(re))
 
         return alert_id
 

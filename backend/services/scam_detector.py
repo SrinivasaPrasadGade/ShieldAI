@@ -156,6 +156,33 @@ class ScamDetector:
                     description=f"Text analysis risk score: {fused_score}. {gemini_result.get('explanation', '')}",
                     linked_phone=source_phone,
                 )
+
+                # Smart Upgrade: Auto-populate the fraud network graph
+                try:
+                    from services.graph_service import get_graph_service
+                    graph_svc = get_graph_service()
+                    
+                    # Extract entities from Gemini result
+                    entities = gemini_result.get("extracted_entities", {})
+                    phone_numbers = entities.get("phone_numbers", []) if isinstance(entities.get("phone_numbers"), list) else []
+                    account_numbers = entities.get("account_numbers", []) if isinstance(entities.get("account_numbers"), list) else []
+                    
+                    if source_phone and source_phone not in phone_numbers:
+                        phone_numbers.append(source_phone)
+                    
+                    # Generate pseudo-report ID for the graph link
+                    pseudo_report_id = alert_id or str(uuid.uuid4())
+                    
+                    graph_svc.add_report_to_graph(
+                        report_id=pseudo_report_id,
+                        phone_numbers=phone_numbers,
+                        account_numbers=account_numbers,
+                        description=text
+                    )
+                    logger.info("auto_added_to_graph_on_scam_detection", alert_id=alert_id, report_id=pseudo_report_id)
+                except Exception as graph_err:
+                    logger.error("auto_graph_addition_failed", error=str(graph_err))
+
             except Exception as e:
                 logger.error("alert_creation_failed", error=str(e))
 
