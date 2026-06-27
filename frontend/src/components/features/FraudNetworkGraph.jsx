@@ -31,10 +31,10 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
           if (node.isCentral || node.is_central) {
             r = 0; // Mastermind at the dead center
             theta = 0;
-          } else if (node.type === 'phone') {
+          } else if (node.type === 'phone' || node.entity_type === 'phone') {
             r = graphWidth * 0.18; // Phone ring
             theta = (index * 2 * Math.PI) / nodesList.length;
-          } else if (node.type === 'account') {
+          } else if (node.type === 'account' || node.entity_type === 'account') {
             r = graphWidth * 0.28; // Account ring
             theta = (index * 2 * Math.PI) / nodesList.length + Math.PI / 6;
           } else {
@@ -88,15 +88,15 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
 
   const getNodeColor = (node) => {
     if (node.isCentral || node.is_central) return 'var(--accent-orange)'; // Mastermind Node
-    if (node.type === 'phone') return 'var(--accent-red)';
-    if (node.type === 'account') return 'var(--accent-purple)';
+    if (node.type === 'phone' || node.entity_type === 'phone') return 'var(--accent-red)';
+    if (node.type === 'account' || node.entity_type === 'account') return 'var(--accent-purple)';
     return 'var(--accent-green)'; // Victim
   };
 
   const getEntityIcon = (type, isCentral) => {
     if (isCentral) return <Award size={14} color="var(--accent-orange)" />;
-    if (type === 'phone') return <Phone size={14} color="var(--accent-red)" />;
-    if (type === 'account') return <CreditCard size={14} color="var(--accent-purple)" />;
+    if (type === 'phone' || type === 'phone') return <Phone size={14} color="var(--accent-red)" />;
+    if (type === 'account' || type === 'account') return <CreditCard size={14} color="var(--accent-purple)" />;
     return <UserCheck size={14} color="var(--accent-green)" />;
   };
 
@@ -113,7 +113,10 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
           {loading ? (
             <div style={{ color: 'var(--text-secondary)' }}>Loading Fraud Links...</div>
           ) : (
-            <svg width={graphWidth} height={graphHeight}>
+            <svg 
+              viewBox={`0 0 ${graphWidth} ${graphHeight}`}
+              style={{ width: '100%', height: '100%', maxHeight: '300px' }}
+            >
               {/* Draw Edges */}
               {networkData.edges.map((edge, idx) => {
                 const sourceNode = networkData.nodes.find((n) => n.id === edge.source_id || n.id === edge.source);
@@ -188,10 +191,10 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {/* Node Identity header */}
                 <div style={{ padding: '12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '8px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  {getEntityIcon(nodeDetails.entity.type, nodeDetails.entity.is_central || nodeDetails.entity.isCentral)}
+                  {getEntityIcon(nodeDetails.entity.type || nodeDetails.entity.entity_type, nodeDetails.entity.is_central || nodeDetails.entity.isCentral)}
                   <div>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block' }}>
-                      {nodeDetails.entity.type?.toUpperCase()}
+                      {(nodeDetails.entity.type || nodeDetails.entity.entity_type)?.toUpperCase()}
                     </span>
                     <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                       {nodeDetails.entity.value || nodeDetails.entity.id}

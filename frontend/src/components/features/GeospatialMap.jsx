@@ -144,10 +144,8 @@ export const GeospatialMap = ({ activeAlert = null }) => {
 
         {/* SVG Vector Outlines of India (Stylized Cyber-Grid Outlines) */}
         <svg 
-          width={mapDimensions.width} 
-          height={mapDimensions.height} 
           viewBox={`0 0 ${mapDimensions.width} ${mapDimensions.height}`}
-          style={{ cursor: 'crosshair', filter: 'drop-shadow(0px 0px 10px rgba(6,182,212,0.05))' }}
+          style={{ width: '100%', height: '100%', maxHeight: '280px', cursor: 'crosshair', filter: 'drop-shadow(0px 0px 10px rgba(6,182,212,0.05))' }}
         >
           {/* India Boundary Path Approximation (Cyber grid theme) */}
           <path

@@ -110,6 +110,63 @@ class AlertService:
             dict with alerts list and total count
         """
         try:
+            if self.db is None:
+                # Return high-fidelity local mock alerts for offline dashboard demo
+                now_str = datetime.now(timezone.utc).isoformat()
+                mock_alerts = [
+                    {
+                        "id": "alert_mamba_critical",
+                        "alert_type": "fraud_ring_identified",
+                        "severity": "CRITICAL",
+                        "title": "Critical Threat: Operation Mamba Coordinated digital arrest ring detected",
+                        "description": "WhatsApp alert: suspect +917892019283 impersonating CBI officials. Skype video calls used to lock Aadhaar cards and demand clearance fees.",
+                        "linked_report_id": "rep_mamba_01",
+                        "linked_phone": "+917892019283",
+                        "location": {"lat": 17.3850, "lng": 78.4867, "city": "Hyderabad"},
+                        "is_read": False,
+                        "created_at": now_str,
+                    },
+                    {
+                        "id": "alert_kappa_high",
+                        "alert_type": "fraud_ring_identified",
+                        "severity": "HIGH",
+                        "title": "Fraud Ring Detected: Ring Kappa Stock Investment Scam",
+                        "description": "Correlated Stock Market WhatsApp/Telegram tip scam. Victim lured to download BullTrade app and send Rs 50,000 commission fee.",
+                        "linked_report_id": "rep_kappa_01",
+                        "linked_phone": "+919987123456",
+                        "location": {"lat": 12.9716, "lng": 77.5946, "city": "Bengaluru"},
+                        "is_read": False,
+                        "created_at": now_str,
+                    },
+                    {
+                        "id": "alert_ficn_malda",
+                        "alert_type": "ficn_detected",
+                        "severity": "HIGH",
+                        "title": "Counterfeit Currency Alert: Malda Hotspot",
+                        "description": "High volume of counterfeit Rs 500 notes intercepted in Malda, West Bengal. UV thread fluorescence failed.",
+                        "linked_report_id": "rep_ficn_01",
+                        "linked_phone": "",
+                        "location": {"lat": 25.0108, "lng": 88.1406, "city": "Malda"},
+                        "is_read": False,
+                        "created_at": now_str,
+                    },
+                    {
+                        "id": "alert_scam_delhi",
+                        "alert_type": "scam_detected",
+                        "severity": "MEDIUM",
+                        "title": "Active Telecom SIM Block Scam in New Delhi",
+                        "description": "TRAI impersonation warning in Delhi. Suspect calling from +919900112233 claiming sims will block in 2 hours.",
+                        "linked_report_id": "rep_scam_01",
+                        "linked_phone": "+919900112233",
+                        "location": {"lat": 28.7041, "lng": 77.1025, "city": "Delhi"},
+                        "is_read": False,
+                        "created_at": now_str,
+                    }
+                ]
+                if severity:
+                    mock_alerts = [a for a in mock_alerts if a["severity"] == severity]
+                return {"alerts": mock_alerts[:limit], "total": len(mock_alerts)}
+
             alerts_ref = self.db.collection("alerts")
 
             if severity:

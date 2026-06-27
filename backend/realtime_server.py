@@ -49,11 +49,6 @@ def fetch_recent_alerts():
         from services.alert_service import get_alert_service
         alert_svc = get_alert_service()
         
-        # Check if firestore is initialized/available
-        if not alert_svc.db:
-            print("Firestore client is offline, skipping historical alerts sync.")
-            return []
-            
         loop = asyncio.new_event_loop()
         res = loop.run_until_complete(alert_svc.get_alerts(limit=15))
         loop.close()
