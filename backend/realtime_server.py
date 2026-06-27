@@ -104,4 +104,4 @@ threading.Thread(target=listen_for_alerts_with_retry, daemon=True).start()
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
     print(f"Starting realtime server on port {port}...")
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)

@@ -52,7 +52,7 @@ export const GeospatialMap = ({ activeAlert = null }) => {
       } finally {
         setLoading(false);
       }
-    }, [activeAlert]);
+    };
 
     fetchIncidents();
   }, [activeAlert]);

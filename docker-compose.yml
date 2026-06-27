@@ -14,8 +14,8 @@ services:
 
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.api
+      context: .
+      dockerfile: backend/Dockerfile.api
     ports:
       - "8000:8000"
     environment:
@@ -35,8 +35,8 @@ services:
 
   realtime:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.realtime
+      context: .
+      dockerfile: backend/Dockerfile.realtime
     ports:
       - "5001:5001"
     environment:
@@ -51,8 +51,8 @@ services:
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.api
+      context: .
+      dockerfile: backend/Dockerfile.api
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
@@ -67,10 +67,10 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
+      context: .
+      dockerfile: frontend/Dockerfile.frontend
     ports:
-      - "5173:5173"
+      - "5174:5174"
     environment:
       - VITE_API_URL=http://localhost:8000
       - VITE_REALTIME_URL=http://localhost:5001

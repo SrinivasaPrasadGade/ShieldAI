@@ -109,8 +109,8 @@ def get_firestore_client():
     if _firestore_client is None:
         cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "backend/firebase-credentials.json")
         
-        # Check if the credentials file exists and is populated
-        if os.path.exists(cred_path) and os.path.getsize(cred_path) > 0:
+        # Check if the credentials file exists, is a file, and is populated
+        if os.path.exists(cred_path) and os.path.isfile(cred_path) and os.path.getsize(cred_path) > 0:
             cred = credentials.Certificate(cred_path)
             try:
                 firebase_admin.initialize_app(cred)
