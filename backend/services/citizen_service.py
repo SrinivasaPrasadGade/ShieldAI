@@ -173,6 +173,13 @@ class CitizenService:
             dict matching ReportStatusResponse, or None if not found
         """
         try:
+            if self.db is None:
+                return {
+                    "status": "pending",
+                    "updates": ["Report submitted successfully (Offline Mode)"],
+                    "created_at": str(datetime.now(timezone.utc)),
+                }
+
             doc = self.db.collection("fraud_reports").document(report_id).get()
             if not doc.exists:
                 return None

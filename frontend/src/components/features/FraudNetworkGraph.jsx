@@ -1,7 +1,7 @@
-// frontend/src/components/features/FraudNetworkGraph.jsx
 import React, { useState, useEffect } from 'react';
 import { GitBranch, UserCheck, Phone, CreditCard, ShieldAlert, Award } from 'lucide-react';
 import { api } from '../../services/api';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 export const FraudNetworkGraph = ({ selectedCluster = null }) => {
   const [networkData, setNetworkData] = useState({ nodes: [], edges: [] });
@@ -111,72 +111,82 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
         {/* SVG Graph Viewport */}
         <div style={{ background: '#070a12', borderRadius: '12px', border: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
           {loading ? (
-            <div style={{ color: 'var(--text-secondary)' }}>Loading Fraud Links...</div>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'var(--accent-cyan)' }}>
+              Calculating graph layout...
+            </div>
           ) : (
-            <svg 
-              viewBox={`0 0 ${graphWidth} ${graphHeight}`}
-              style={{ width: '100%', height: '100%', maxHeight: '300px' }}
-            >
-              {/* Draw Edges */}
-              {networkData.edges.map((edge, idx) => {
-                const sourceNode = networkData.nodes.find((n) => n.id === edge.source_id || n.id === edge.source);
-                const targetNode = networkData.nodes.find((n) => n.id === edge.target_id || n.id === edge.target);
+            <TransformWrapper initialScale={1} minScale={0.5} maxScale={4}>
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
+                <svg viewBox={`0 0 ${graphWidth} ${graphHeight}`} style={{ width: '100%', height: '100%' }}>
+                  {/* Edges */}
+                  {networkData.edges.map((edge, i) => {
+                    const sourceNode = networkData.nodes.find((n) => n.id === edge.source || n.id === edge.source_id);
+                    const targetNode = networkData.nodes.find((n) => n.id === edge.target || n.id === edge.target_id);
+                    if (!sourceNode || !targetNode) return null;
+                    return (
+                      <line
+                        key={i}
+                        x1={sourceNode.x}
+                        y1={sourceNode.y}
+                        x2={targetNode.x}
+                        y2={targetNode.y}
+                        stroke="var(--border-glass)"
+                        strokeWidth={edge.weight || 1}
+                        opacity="0.4"
+                      />
+                    );
+                  })}
 
-                if (!sourceNode || !targetNode) return null;
+                  {/* Nodes */}
+                  {networkData.nodes.map((node) => {
+                    const isSelected = selectedNode?.id === node.id;
+                    const nodeColor = getNodeColor(node);
 
-                return (
-                  <line
-                    key={idx}
-                    x1={sourceNode.x}
-                    y1={sourceNode.y}
-                    x2={targetNode.x}
-                    y2={targetNode.y}
-                    stroke="rgba(255, 255, 255, 0.08)"
-                    strokeWidth={Math.min(4, Math.max(1, edge.weight || 1))}
-                  />
-                );
-              })}
+                    return (
+                      <g 
+                        key={node.id} 
+                        transform={`translate(${node.x}, ${node.y})`}
+                        onClick={() => handleNodeClick(node)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {/* Glowing outer selected boundary */}
+                        {isSelected && (
+                          <circle r="14" fill="none" stroke="var(--accent-cyan)" strokeWidth="2" className="animate-pulse" />
+                        )}
 
-              {/* Draw Nodes */}
-              {networkData.nodes.map((node) => {
-                const nodeColor = getNodeColor(node);
-                const isSelected = selectedNode?.id === node.id;
+                        {/* Node Core */}
+                        <circle
+                          r={node.isCentral || node.is_central ? 10 : 8}
+                          fill={nodeColor}
+                          stroke="rgba(0,0,0,0.4)"
+                          strokeWidth="2"
+                        >
+                          <title>{node.label || node.value || node.id}</title>
+                        </circle>
 
-                return (
-                  <g 
-                    key={node.id} 
-                    transform={`translate(${node.x}, ${node.y})`}
-                    onClick={() => handleNodeClick(node)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {/* Glowing outer selected boundary */}
-                    {isSelected && (
-                      <circle r="14" fill="none" stroke="var(--accent-cyan)" strokeWidth="2" className="animate-pulse" />
-                    )}
-
-                    {/* Node Core */}
-                    <circle
-                      r={node.isCentral || node.is_central ? 10 : 8}
-                      fill={nodeColor}
-                      stroke="rgba(0,0,0,0.4)"
-                      strokeWidth="2"
-                    />
-
-                    {/* Label */}
-                    <text
-                      y={node.isCentral || node.is_central ? -14 : -12}
-                      textAnchor="middle"
-                      fill="var(--text-secondary)"
-                      fontSize="9"
-                      fontWeight="bold"
-                      style={{ pointerEvents: 'none', background: 'rgba(0,0,0,0.8)' }}
-                    >
-                      {node.label || node.value || node.id}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                        {/* Label */}
+                        <text
+                          y={node.isCentral || node.is_central ? -14 : -12}
+                          textAnchor="middle"
+                          fill="var(--text-secondary)"
+                          fontSize="9"
+                          fontWeight="bold"
+                          style={{ pointerEvents: 'none', background: 'rgba(0,0,0,0.8)' }}
+                        >
+                          {(() => {
+                            const rawLabel = node.label || node.value || node.id;
+                            if (typeof rawLabel === 'string' && rawLabel.length > 15) {
+                              return rawLabel.substring(0, 15) + '...';
+                            }
+                            return rawLabel;
+                          })()}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </TransformComponent>
+            </TransformWrapper>
           )}
         </div>
 
