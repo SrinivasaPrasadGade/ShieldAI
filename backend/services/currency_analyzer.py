@@ -326,18 +326,21 @@ class CurrencyAnalyzer:
         """
         try:
             from models.database import get_firestore_client
+            from services.firestore_utils import count_query
             db = get_firestore_client()
 
             checks_ref = db.collection("currency_checks")
-            all_checks = list(checks_ref.stream())
+            all_checks = list(checks_ref.limit(1000).stream())
 
-            total = len(all_checks)
-            ficn = 0
+            total = count_query(checks_ref) or len(all_checks)
+            ficn_query = checks_ref.where("verdict", "in", ["COUNTERFEIT", "SUSPICIOUS"])
+            ficn_count = count_query(ficn_query)
+            ficn = ficn_count or 0
             denominations: dict = {}
 
             for doc in all_checks:
                 data = doc.to_dict()
-                if data.get("verdict") in ("COUNTERFEIT", "SUSPICIOUS"):
+                if ficn_count is None and data.get("verdict") in ("COUNTERFEIT", "SUSPICIOUS"):
                     ficn += 1
                 denom = str(data.get("denomination", "unknown"))
                 denominations[denom] = denominations.get(denom, 0) + 1
@@ -360,7 +363,7 @@ class CurrencyAnalyzer:
 
 
 # Module-level singleton
-_currency_analyzer: Optional[CurrencyAnalyzer] = None
+_currency_analyzer: CurrencyAnalyzer | None = None
 
 
 def get_currency_analyzer() -> CurrencyAnalyzer:

@@ -7,8 +7,13 @@ providing typed, validated settings with sensible defaults.
 
 import os
 from typing import List
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
+
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -38,14 +43,28 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = "backend/firebase-credentials.json"
     FIREBASE_STORAGE_BUCKET: str = "shieldai-hackathon.appspot.com"  # Replace with actual bucket name
 
+    @property
+    def sqlite_db_abs_path(self) -> str:
+        """Resolve SQLITE_DB_PATH to an absolute path relative to PROJECT_ROOT if it is relative."""
+        path = Path(self.SQLITE_DB_PATH)
+        if path.is_absolute():
+            return str(path)
+        return str((PROJECT_ROOT / path).resolve())
 
+    @property
+    def firebase_credentials_abs_path(self) -> str:
+        """Resolve FIREBASE_CREDENTIALS_PATH to an absolute path relative to PROJECT_ROOT if it is relative."""
+        path = Path(self.FIREBASE_CREDENTIALS_PATH)
+        if path.is_absolute():
+            return str(path)
+        return str((PROJECT_ROOT / path).resolve())
     
     # ── AI / ML ──────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
     GEMINI_TIMEOUT: int = 30  # seconds
     BERT_MODEL: str = "facebook/bart-large-mnli"
-    ENABLE_BERT: bool = True  # Set to False to skip BERT loading on low-memory systems
+    ENABLE_BERT: bool = False  # Set true only when the host can load the large zero-shot model
 
     # ── Async Task Store ─────────────────────────────────────────
     TASK_TTL_HOURS: int = 24
@@ -79,7 +98,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW_SECONDS: int = 60  # window duration
 
     model_config = {
-        "env_file": ".env",
+        "env_file": (PROJECT_ROOT / ".env", BASE_DIR / ".env", ".env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
         "extra": "ignore",

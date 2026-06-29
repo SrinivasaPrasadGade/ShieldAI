@@ -1,13 +1,20 @@
 import os
 import sqlite3
 from contextlib import contextmanager
+from pathlib import Path
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
-# Load environment variables
-load_dotenv()
+# Locate the root of the project
+_current_file = Path(__file__).resolve()
+_project_root = _current_file.parents[2]
+_env_path = _project_root / ".env"
+if _env_path.exists():
+    load_dotenv(dotenv_path=_env_path)
+else:
+    load_dotenv()
 
 # ==========================================
 # SQLITE CONNECTION & SCHEMA DEFINITIONS
@@ -70,7 +77,8 @@ CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);
 @contextmanager
 def get_sqlite_connection():
     """Context manager for obtaining a SQLite database connection."""
-    db_path = os.getenv("SQLITE_DB_PATH", "backend/shield_ai.db")
+    from config import settings
+    db_path = settings.sqlite_db_abs_path
     
     # Ensure directory containing db file exists
     db_dir = os.path.dirname(db_path)
@@ -107,7 +115,8 @@ def get_firestore_client():
     """
     global _firestore_client
     if _firestore_client is None:
-        cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "backend/firebase-credentials.json")
+        from config import settings
+        cred_path = settings.firebase_credentials_abs_path
         
         # Check if the credentials file exists, is a file, and is populated
         if os.path.exists(cred_path) and os.path.isfile(cred_path) and os.path.getsize(cred_path) > 0:

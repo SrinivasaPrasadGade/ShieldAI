@@ -5,13 +5,11 @@ Operates on SQLite entities, relationships, and fraud_clusters tables.
 Provides network queries, entity lookups, cluster management, and stats.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional, List
 from collections import deque
-import sqlite3
 import networkx as nx
 from community import community_louvain
 
-from config import settings
 from logging_config import get_logger
 from models.database import get_sqlite_connection
 from models import task_store
@@ -329,10 +327,18 @@ class GraphService:
             "highest_risk_cluster": highest_risk_cluster,
         }
 
-    def add_report_to_graph(self, report_id: str, phone_numbers: List[str] = [], account_numbers: List[str] = [], description: str = ""):
+    def add_report_to_graph(
+        self,
+        report_id: str,
+        phone_numbers: Optional[List[str]] = None,
+        account_numbers: Optional[List[str]] = None,
+        description: str = "",
+    ):
         """
         Called every time a new fraud report is processed to build out the network graph.
         """
+        phone_numbers = phone_numbers or []
+        account_numbers = account_numbers or []
         victim_id = f"victim_{report_id}"
         
         with get_sqlite_connection() as conn:
@@ -442,8 +448,8 @@ class GraphService:
             # 3. Update SQLite database with new cluster_id and is_central flag
             with get_sqlite_connection() as conn:
                 for node_id, cluster_id in partition.items():
-                    # Centrality threshold: top nodes in the network or score > 0.2
-                    is_central = 1 if centrality.get(node_id, 0.0) > 0.2 else 0
+                    # Flag either bridge nodes or repeated-contact hubs as central.
+                    is_central = 1 if centrality.get(node_id, 0.0) > 0.2 or G.degree(node_id) >= 3 else 0
                     conn.execute("""
                         UPDATE entities
                         SET cluster_id = ?, is_central = ?
@@ -499,7 +505,7 @@ class GraphService:
 
 
 # Module-level singleton
-_graph_service: Optional[GraphService] = None
+_graph_service: GraphService | None = None
 
 
 def get_graph_service() -> GraphService:

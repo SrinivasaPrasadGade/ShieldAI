@@ -539,7 +539,7 @@ This fallback report compiles direct database indicators. Standardize with full 
 
 
 # Module-level singleton (initialized in main.py lifespan)
-_gemini_service: Optional[GeminiService] = None
+_gemini_service: GeminiService | None = None
 
 
 def get_gemini_service() -> GeminiService:

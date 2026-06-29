@@ -200,7 +200,7 @@ class CitizenService:
 
 
 # Module-level singleton
-_citizen_service: Optional[CitizenService] = None
+_citizen_service: CitizenService | None = None
 
 
 def get_citizen_service() -> CitizenService:

@@ -175,7 +175,7 @@ class EvidenceService:
 
 
 # Module-level singleton
-_evidence_service: Optional[EvidenceService] = None
+_evidence_service: EvidenceService | None = None
 
 
 def get_evidence_service() -> EvidenceService:

@@ -21,6 +21,10 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+      - SQLITE_DB_PATH=/app/data/shield_ai.db
+      - ENABLE_BERT=${ENABLE_BERT:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - REDIS_URL=redis://redis:6379
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
@@ -42,6 +46,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - SQLITE_DB_PATH=/app/data/shield_ai.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./backend/firebase-credentials.json:/app/firebase-credentials.json
     depends_on:
@@ -56,6 +62,10 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+      - SQLITE_DB_PATH=/app/data/shield_ai.db
+      - ENABLE_BERT=${ENABLE_BERT:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend/firebase-credentials.json:/app/firebase-credentials.json

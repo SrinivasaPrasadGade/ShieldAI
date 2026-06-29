@@ -320,7 +320,7 @@ class ScamDetector:
 
 
 # Module-level singleton
-_scam_detector: Optional[ScamDetector] = None
+_scam_detector: ScamDetector | None = None
 
 
 def get_scam_detector() -> ScamDetector:

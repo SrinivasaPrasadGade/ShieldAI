@@ -36,6 +36,31 @@ async def whatsapp_webhook(request: Request):
     try:
         # Parse form data from Twilio
         form_data = await request.form()
+        form_dict = dict(form_data)
+
+        try:
+            from twilio.request_validator import RequestValidator
+            validator = RequestValidator(settings.TWILIO_AUTH_TOKEN)
+            public_url = str(request.url)
+            forwarded_proto = request.headers.get("x-forwarded-proto")
+            forwarded_host = request.headers.get("x-forwarded-host")
+            if forwarded_proto and forwarded_host:
+                public_url = f"{forwarded_proto}://{forwarded_host}{request.url.path}"
+
+            signature = request.headers.get("x-twilio-signature", "")
+            is_placeholder = "your-twilio" in settings.TWILIO_AUTH_TOKEN.lower()
+            if not validator.validate(public_url, form_dict, signature):
+                if settings.DEBUG or is_placeholder:
+                    logger.warning("twilio_signature_invalid_ignored_in_debug_or_placeholder_mode")
+                else:
+                    logger.warning("twilio_signature_invalid")
+                    raise HTTPException(status_code=403, detail="Invalid Twilio signature")
+        except HTTPException:
+            raise
+        except Exception as validation_error:
+            logger.error("twilio_signature_validation_failed", error=str(validation_error))
+            raise HTTPException(status_code=503, detail="Twilio signature validation unavailable")
+
         incoming_msg = form_data.get("Body", "").strip()
         from_number = form_data.get("From", "").replace("whatsapp:", "")
         to_number = form_data.get("To", "")

@@ -4,7 +4,6 @@ Handles uploading temporary and permanent files to cloud storage.
 """
 
 import uuid
-from typing import Optional
 from firebase_admin import storage
 from models.database import get_firestore_client  # ensures firebase is initialized
 from config import settings
@@ -63,8 +62,10 @@ class StorageService:
             logger.error("file_download_failed", error=str(e), uri=uri)
             raise e
 
-# Singleton
-storage_service = StorageService()
+_storage_service: StorageService | None = None
 
 def get_storage_service() -> StorageService:
-    return storage_service
+    global _storage_service
+    if _storage_service is None:
+        _storage_service = StorageService()
+    return _storage_service

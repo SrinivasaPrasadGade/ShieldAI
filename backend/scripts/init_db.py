@@ -1,7 +1,14 @@
 import sys
+from pathlib import Path
 from datetime import datetime, timezone
-from backend.models.database import init_sqlite_db, get_sqlite_connection, get_firestore_client
-from backend.models.schemas import ScamScript
+
+# Add backend directory to sys.path to allow standalone execution
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from models.database import init_sqlite_db, get_sqlite_connection, get_firestore_client
+from models.schemas import ScamScript
 
 def seed_sqlite_data():
     """Seeds some initial test entities and relationships into SQLite."""
@@ -11,8 +18,8 @@ def seed_sqlite_data():
         
         # 1. Seed some standard clusters
         clusters = [
-            (1, "Ring Alpha", 3, "HIGH", "digital_arrest", "Inter-state", "2026-06-20T10:00:00Z", "2026-06-24T12:00:00Z", "active"),
-            (2, "Ring Beta", 2, "MEDIUM", "kyc_fraud", "Local", "2026-06-22T08:00:00Z", "2026-06-24T14:30:00Z", "active")
+            (1, "Ring Alpha", 3, "HIGH", "digital_arrest", "Inter-state", "2026-06-20T10:00:00+00:00", "2026-06-24T12:00:00+00:00", "active"),
+            (2, "Ring Beta", 2, "MEDIUM", "kyc_fraud", "Local", "2026-06-22T08:00:00+00:00", "2026-06-24T14:30:00+00:00", "active")
         ]
         cursor.executemany("""
             INSERT OR REPLACE INTO fraud_clusters (id, cluster_name, size, risk_level, operation_type, geographic_span, first_activity, last_activity, status)
@@ -22,13 +29,13 @@ def seed_sqlite_data():
         # 2. Seed some entities (phones, accounts, suspects)
         entities = [
             # Ring Alpha entities
-            ("phone_1", "phone", "+919876543210", 0.9, 12, "2026-06-20T10:00:00Z", "2026-06-24T12:00:00Z", 1, 1),
-            ("account_1", "account", "123456789012 (SBI)", 0.85, 8, "2026-06-21T11:00:00Z", "2026-06-24T11:30:00Z", 1, 0),
-            ("victim_1", "victim", "Victim A (Mumbai)", 0.0, 1, "2026-06-24T10:00:00Z", "2026-06-24T10:00:00Z", 1, 0),
+            ("phone_1", "phone", "+919876543210", 0.9, 12, "2026-06-20T10:00:00+00:00", "2026-06-24T12:00:00+00:00", 1, 1),
+            ("account_1", "account", "123456789012 (SBI)", 0.85, 8, "2026-06-21T11:00:00+00:00", "2026-06-24T11:30:00+00:00", 1, 0),
+            ("victim_1", "victim", "Victim A (Mumbai)", 0.0, 1, "2026-06-24T10:00:00+00:00", "2026-06-24T10:00:00+00:00", 1, 0),
             
             # Ring Beta entities
-            ("phone_2", "phone", "+918765432109", 0.6, 4, "2026-06-22T08:00:00Z", "2026-06-24T14:30:00Z", 2, 1),
-            ("account_2", "account", "987654321098 (HDFC)", 0.5, 3, "2026-06-22T09:00:00Z", "2026-06-24T14:00:00Z", 2, 0)
+            ("phone_2", "phone", "+918765432109", 0.6, 4, "2026-06-22T08:00:00+00:00", "2026-06-24T14:30:00+00:00", 2, 1),
+            ("account_2", "account", "987654321098 (HDFC)", 0.5, 3, "2026-06-22T09:00:00+00:00", "2026-06-24T14:00:00+00:00", 2, 0)
         ]
         cursor.executemany("""
             INSERT OR REPLACE INTO entities (id, entity_type, value, risk_score, report_count, first_seen, last_seen, cluster_id, is_central)
@@ -37,11 +44,11 @@ def seed_sqlite_data():
         
         # 3. Seed relationships
         relationships = [
-            ("phone_1", "victim_1", "called", 1.0, "2026-06-24T10:00:00Z", "2026-06-24T10:00:00Z", "report_abc123"),
-            ("victim_1", "account_1", "transacted_with", 2.0, "2026-06-24T10:15:00Z", "2026-06-24T10:30:00Z", "report_abc123"),
-            ("phone_1", "account_1", "mule_for", 5.0, "2026-06-21T11:00:00Z", "2026-06-24T12:00:00Z", None),
+            ("phone_1", "victim_1", "called", 1.0, "2026-06-24T10:00:00+00:00", "2026-06-24T10:00:00+00:00", "report_abc123"),
+            ("victim_1", "account_1", "transacted_with", 2.0, "2026-06-24T10:15:00+00:00", "2026-06-24T10:30:00+00:00", "report_abc123"),
+            ("phone_1", "account_1", "mule_for", 5.0, "2026-06-21T11:00:00+00:00", "2026-06-24T12:00:00+00:00", None),
             
-            ("phone_2", "account_2", "mule_for", 2.0, "2026-06-22T09:00:00Z", "2026-06-24T14:30:00Z", None)
+            ("phone_2", "account_2", "mule_for", 2.0, "2026-06-22T09:00:00+00:00", "2026-06-24T14:30:00+00:00", None)
         ]
         cursor.executemany("""
             INSERT INTO relationships (source_id, target_id, relationship, weight, first_seen, last_seen, linked_report_id)
@@ -50,8 +57,8 @@ def seed_sqlite_data():
         
         # 4. Seed incident logs
         incidents = [
-            ("report_abc123", "scam_call", 19.0760, 72.8777, "Mumbai", "Maharashtra", "400001", "HIGH", "2026-06-24T10:00:00Z"),
-            ("report_xyz789", "ficn", 28.6139, 77.2090, "New Delhi", "Delhi", "110001", "CRITICAL", "2026-06-24T11:00:00Z")
+            ("report_abc123", "scam_call", 19.0760, 72.8777, "Mumbai", "Maharashtra", "400001", "HIGH", "2026-06-24T10:00:00+00:00"),
+            ("report_xyz789", "ficn", 28.6139, 77.2090, "New Delhi", "Delhi", "110001", "CRITICAL", "2026-06-24T11:00:00+00:00")
         ]
         cursor.executemany("""
             INSERT INTO incidents (report_id, incident_type, lat, lng, city, state, pincode, severity, created_at)
@@ -64,6 +71,9 @@ def seed_firestore_data():
     """Seeds initial known scam scripts into Cloud Firestore."""
     print("Seeding Firestore scam scripts...")
     db = get_firestore_client()
+    if db is None:
+        print("Warning: Firestore client could not be initialized. Skipping Firestore seeding.")
+        return
     
     scripts = [
         ScamScript(

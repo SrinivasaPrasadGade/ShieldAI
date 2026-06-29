@@ -3,8 +3,8 @@ from services.citizen_service import get_citizen_service
 from services.scam_detector import get_scam_detector
 from models.database import get_sqlite_connection, get_firestore_client
 from datetime import datetime, timezone
+from tasks.async_utils import run_async
 import random
-import asyncio
 
 # Dictionary of 30 major Indian cities with their coordinates, state, and pincode
 INDIAN_CITIES = {
@@ -141,7 +141,7 @@ def process_citizen_report_task(report_id: str):
                 geo_data["state"],
                 geo_data["pincode"],
                 result["risk_label"],
-                now.strftime("%Y-%m-%d %H:%M:%S")
+                now.isoformat()
             ))
             
-    asyncio.run(_run())
+    run_async(_run())

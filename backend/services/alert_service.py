@@ -227,7 +227,7 @@ class AlertService:
 
 
 # Module-level singleton
-_alert_service: Optional[AlertService] = None
+_alert_service: AlertService | None = None
 
 
 def get_alert_service() -> AlertService:

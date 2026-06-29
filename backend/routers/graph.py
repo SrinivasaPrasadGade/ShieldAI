@@ -21,7 +21,6 @@ from models.schemas import (
     GraphQueryResponse,
     GraphClustersResponse,
     GraphStatsResponse,
-    CurrencyVerifyResponse,  # Reuse for task_id response
 )
 from services.graph_service import get_graph_service
 from services.evidence_service import get_evidence_service
@@ -97,7 +96,7 @@ async def start_evidence_package(cluster_id: int):
     """
     Start async evidence package generation for a fraud cluster.
 
-    Returns a task_id. Poll GET /api/currency/result/{task_id} for the result.
+    Returns a task_id. Poll GET /api/graph/evidence-package/result/{task_id} for the result.
     The evidence package includes entities, relationships, linked reports,
     and key findings.
     """
@@ -105,6 +104,24 @@ async def start_evidence_package(cluster_id: int):
     task_id = await service.start_evidence_package(cluster_id)
 
     return {"task_id": task_id}
+
+
+@router.get("/evidence-package/result/{task_id}")
+async def get_evidence_package_result(task_id: str):
+    """
+    Poll for the result of an evidence package generation task.
+    """
+    from models import task_store
+
+    task = task_store.get_task(task_id)
+    if task is None or task.get("task_type") != "evidence_package":
+        raise HTTPException(status_code=404, detail=f"Evidence package task {task_id} not found")
+
+    return {
+        "status": task["status"],
+        "result": task.get("result"),
+        "error": task.get("error"),
+    }
 
 
 @router.get("/stats", response_model=GraphStatsResponse)

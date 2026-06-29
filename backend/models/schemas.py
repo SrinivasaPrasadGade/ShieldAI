@@ -60,11 +60,6 @@ class FraudReport(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
 class CurrencyCheck(BaseModel):
     id: str
     submitted_by: str = Field(description="'teller' | 'citizen' | 'officer'")
@@ -76,11 +71,6 @@ class CurrencyCheck(BaseModel):
     gemini_analysis: str
     location: CurrencyLocation
     created_at: datetime
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
 
 class Alert(BaseModel):
     id: str
@@ -94,11 +84,6 @@ class Alert(BaseModel):
     is_read: bool = False
     created_at: datetime
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
 class ScamScript(BaseModel):
     id: str
     scam_type: str = Field(description="'digital_arrest' | 'kyc_fraud' | 'customs_seizure' | 'drug_trafficking'")
@@ -108,11 +93,6 @@ class ScamScript(BaseModel):
     reported_count: int = 0
     first_seen: datetime
     last_seen: datetime
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
 
 class DailySummary(BaseModel):
     total_reports: int = 0
