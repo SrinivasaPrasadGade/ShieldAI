@@ -1,0 +1,41 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Add a non-root user
+RUN groupadd -r shieldai && useradd -r -g shieldai shieldai
+
+# Install system dependencies (needs libgl1 for OpenCV)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install (worker has heavy ML deps)
+COPY backend/requirements.base.txt .
+COPY backend/requirements.worker.txt .
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.worker.txt
+
+# Copy the rest of the application
+COPY backend/ backend/
+
+# Set working directory to backend so relative paths work correctly
+WORKDIR /app/backend
+
+# Create data and cache directories
+RUN mkdir -p /app/data /app/.cache/huggingface \
+    && chown -R shieldai:shieldai /app
+
+# Switch to non-root user
+USER shieldai
+
+# Pre-download Hugging Face model if ZERO_SHOT is enabled (to avoid first-run penalty)
+ENV HF_HOME=/app/.cache/huggingface
+ARG ENABLE_ZERO_SHOT=false
+ARG ZERO_SHOT_MODEL=facebook/bart-large-mnli
+RUN if [ "$ENABLE_ZERO_SHOT" = "true" ] || [ "$ENABLE_ZERO_SHOT" = "True" ] ; then \
+    python -c "from transformers import pipeline; pipeline('zero-shot-classification', model='$ZERO_SHOT_MODEL', device=-1)" ; \
+    fi
+
+CMD ["celery", "-A", "celery_app", "worker", "--loglevel=info", "--concurrency=2"]

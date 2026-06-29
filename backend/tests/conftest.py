@@ -12,7 +12,8 @@ import tempfile
 import shutil
 
 # Set up environment variables for testing
-os.environ["ENABLE_BERT"] = "false"
+os.environ["SQLITE_DB_PATH"] = "backend/shield_ai_test.db"
+os.environ["ENABLE_ZERO_SHOT"] = "false"
 os.environ["GEMINI_API_KEY"] = "mock-key"
 
 @pytest.fixture(scope="session", autouse=True)

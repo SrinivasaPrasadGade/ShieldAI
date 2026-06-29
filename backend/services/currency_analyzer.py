@@ -212,6 +212,35 @@ class CurrencyAnalyzer:
             storage = get_storage_service()
             image_bytes = storage.download_file(file_url)
 
+            # 0. Assess image quality before any processing
+            from services.image_quality_service import get_image_quality_service
+            quality_svc = get_image_quality_service()
+            quality_report = quality_svc.assess(image_bytes)
+
+            if not quality_report.is_usable:
+                # Image too poor for reliable analysis
+                task_result = {
+                    "verdict": "UNCLEAR_IMAGE",
+                    "confidence": 0.0,
+                    "failed_features": ["image_quality_insufficient"],
+                    "analysis": (
+                        f"Image quality check failed: {quality_report.rejection_reason}. "
+                        f"Please retake the photo with better lighting and focus."
+                    ),
+                    "alert_generated": False,
+                    "image_quality": {
+                        "is_usable": quality_report.is_usable,
+                        "blur_score": quality_report.blur_score,
+                        "brightness": quality_report.brightness,
+                        "resolution": list(quality_report.resolution),
+                        "warnings": quality_report.warnings,
+                        "rejection_reason": quality_report.rejection_reason,
+                    },
+                }
+                task_store.update_task(task_id, status="complete", result=task_result)
+                logger.info("verification_rejected_quality", task_id=task_id, reason=quality_report.rejection_reason)
+                return
+
             # 1. Preprocess Image
             processed_bytes = self.preprocess_image(image_bytes)
 
@@ -236,13 +265,20 @@ class CurrencyAnalyzer:
                 except Exception as e:
                     logger.error("currency_alert_failed", error=str(e))
 
-            # 4. Store complete result
+            # 4. Store complete result (including quality report)
             task_result = {
                 "verdict": verdict,
                 "confidence": result.get("confidence", 0.5),
                 "failed_features": result.get("failed_features", []),
                 "analysis": result.get("analysis", ""),
                 "alert_generated": alert_generated,
+                "image_quality": {
+                    "is_usable": quality_report.is_usable,
+                    "blur_score": quality_report.blur_score,
+                    "brightness": quality_report.brightness,
+                    "resolution": list(quality_report.resolution),
+                    "warnings": quality_report.warnings,
+                },
             }
 
             task_store.update_task(task_id, status="complete", result=task_result)

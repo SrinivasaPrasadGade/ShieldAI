@@ -1,8 +1,8 @@
 """
 Multi-model scam detection service for ShieldAI.
 
-Orchestrates Gemini API + BERT zero-shot classification for
-comprehensive scam text analysis. Handles audio transcription
+Orchestrates Gemini API + Hugging Face zero-shot classification (BART-MNLI)
+for comprehensive scam text analysis. Handles audio transcription
 via Gemini's native audio capabilities.
 """
 
@@ -16,12 +16,7 @@ from services.gemini_service import get_gemini_service
 
 logger = get_logger("shield_ai.scam_detector")
 
-# We defer the import of transformers to avoid hanging the API on startup when BERT is disabled.
-try:
-    import transformers
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
+# We no longer import transformers here directly; it is handled by the zero_shot_classifier service.
 
 
 # Scam classification candidate labels for zero-shot
@@ -39,48 +34,48 @@ SCAM_LABELS = [
 
 class ScamDetector:
     """
-    Orchestrates multi-model scam analysis using Gemini + BERT.
+    Orchestrates multi-model scam analysis using Gemini + zero-shot classifier.
     Merges scores from both models for a composite risk assessment.
     """
 
-    def __init__(self, enable_bert: bool = True, bert_model: str = "facebook/bart-large-mnli"):
+    def __init__(self, enable_zero_shot: bool = False, zero_shot_model: str = "facebook/bart-large-mnli"):
         self.gemini = get_gemini_service()
-        self._bert_pipeline = None
-        self._bert_enabled = enable_bert and TRANSFORMERS_AVAILABLE
-        self._bert_model_name = bert_model
+        self._zero_shot_pipeline = None
+        self._zero_shot_enabled = enable_zero_shot and TRANSFORMERS_AVAILABLE
+        self._zero_shot_model_name = zero_shot_model
 
-        if self._bert_enabled:
-            self._init_bert()
+        if self._zero_shot_enabled:
+            self._init_zero_shot()
 
-    def _init_bert(self):
-        """Lazy-load the BERT zero-shot classification pipeline."""
+    def _init_zero_shot(self):
+        """Lazy-load the zero-shot classification pipeline (BART-MNLI)."""
         try:
             from transformers import pipeline as hf_pipeline
-            logger.info("bert_loading", model=self._bert_model_name)
-            self._bert_pipeline = hf_pipeline(
+            logger.info("zero_shot_loading", model=self._zero_shot_model_name)
+            self._zero_shot_pipeline = hf_pipeline(
                 "zero-shot-classification",
-                model=self._bert_model_name,
+                model=self._zero_shot_model_name,
                 device=-1,  # CPU; use 0 for GPU
             )
-            logger.info("bert_loaded", model=self._bert_model_name)
+            logger.info("zero_shot_loaded", model=self._zero_shot_model_name)
         except Exception as e:
-            logger.error("bert_load_failed", error=str(e))
-            self._bert_pipeline = None
-            self._bert_enabled = False
+            logger.error("zero_shot_load_failed", error=str(e))
+            self._zero_shot_pipeline = None
+            self._zero_shot_enabled = False
 
-    def bert_classify(self, text: str) -> Optional[dict]:
+    def zero_shot_classify(self, text: str) -> Optional[dict]:
         """
-        Run BERT zero-shot classification on text.
+        Run zero-shot classification on text using BART-MNLI.
 
         Returns:
-            dict with label scores, or None if BERT is unavailable.
+            dict with label scores, or None if the classifier is unavailable.
         """
-        if not self._bert_pipeline:
+        if not self._zero_shot_pipeline:
             return None
 
         try:
-            result = self._bert_pipeline(
-                text[:512],  # BERT max token limit consideration
+            result = self._zero_shot_pipeline(
+                text[:512],  # Token limit consideration for BART
                 candidate_labels=SCAM_LABELS,
                 multi_label=False,
             )
@@ -90,7 +85,7 @@ class ScamDetector:
             top_label = result["labels"][0]
             top_score = result["scores"][0]
 
-            logger.debug("bert_classification", top_label=top_label, top_score=round(top_score, 3))
+            logger.debug("zero_shot_classification", top_label=top_label, top_score=round(top_score, 3))
 
             return {
                 "top_label": top_label,
@@ -98,7 +93,7 @@ class ScamDetector:
                 "all_scores": {k: round(v, 4) for k, v in scores.items()},
             }
         except Exception as e:
-            logger.error("bert_classify_failed", error=str(e))
+            logger.error("zero_shot_classify_failed", error=str(e))
             return None
 
     async def analyze_text(
@@ -108,7 +103,7 @@ class ScamDetector:
         language: str = "en",
     ) -> dict:
         """
-        Full scam analysis pipeline: Gemini + BERT → fused score.
+        Full scam analysis pipeline: Gemini + zero-shot → fused score.
 
         Args:
             text: Text to analyze
@@ -122,19 +117,19 @@ class ScamDetector:
         gemini_result = await self.gemini.analyze_scam_text(text, language)
         gemini_score = gemini_result.get("risk_score", 0.0)
 
-        # 2. BERT zero-shot classification (secondary signal)
-        bert_result = await asyncio.to_thread(self.bert_classify, text) if self._bert_pipeline else None
-        bert_score = 0.0
+        # 2. Zero-shot classification (secondary signal)
+        zero_shot_result = await asyncio.to_thread(self.zero_shot_classify, text) if self._zero_shot_pipeline else None
+        zero_shot_score = 0.0
 
-        if bert_result:
-            # Convert BERT top score to risk score
+        if zero_shot_result:
+            # Convert zero-shot top score to risk score
             # "legitimate conversation" is the non-scam label
-            legit_score = bert_result["all_scores"].get("legitimate conversation", 0.0)
-            bert_score = 1.0 - legit_score  # Invert: high legit = low risk
+            legit_score = zero_shot_result["all_scores"].get("legitimate conversation", 0.0)
+            zero_shot_score = 1.0 - legit_score  # Invert: high legit = low risk
 
-        # 3. Score fusion: weighted average (Gemini 0.7, BERT 0.3)
-        if bert_result:
-            fused_score = (gemini_score * 0.7) + (bert_score * 0.3)
+        # 3. Score fusion: weighted average (Gemini 0.7, zero-shot 0.3)
+        if zero_shot_result:
+            fused_score = (gemini_score * 0.7) + (zero_shot_score * 0.3)
         else:
             fused_score = gemini_score
 
@@ -207,7 +202,7 @@ class ScamDetector:
             risk_label=risk_label,
             classification=result["classification"],
             gemini_available=self.gemini.is_available,
-            bert_available=self._bert_enabled,
+            zero_shot_available=self._zero_shot_enabled,
         )
 
         return result
@@ -334,14 +329,14 @@ def get_scam_detector() -> ScamDetector:
     if _scam_detector is None:
         from config import settings
         _scam_detector = ScamDetector(
-            enable_bert=settings.ENABLE_BERT,
-            bert_model=settings.BERT_MODEL,
+            enable_zero_shot=settings.ENABLE_ZERO_SHOT,
+            zero_shot_model=settings.ZERO_SHOT_MODEL,
         )
     return _scam_detector
 
 
-def init_scam_detector(enable_bert: bool = True, bert_model: str = "facebook/bart-large-mnli") -> ScamDetector:
+def init_scam_detector(enable_zero_shot: bool = False, zero_shot_model: str = "facebook/bart-large-mnli") -> ScamDetector:
     """Initialize the ScamDetector singleton."""
     global _scam_detector
-    _scam_detector = ScamDetector(enable_bert=enable_bert, bert_model=bert_model)
+    _scam_detector = ScamDetector(enable_zero_shot=enable_zero_shot, zero_shot_model=zero_shot_model)
     return _scam_detector

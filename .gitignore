@@ -27,6 +27,9 @@ backend/firebase-credentials.json
 .DS_Store
 Thumbs.db
 
+# Redis
+dump.rdb
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

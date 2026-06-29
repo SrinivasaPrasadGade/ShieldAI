@@ -162,7 +162,7 @@ export const CurrencyChecker = () => {
         </div>
         <div>
           <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>Counterfeit Note Verifier</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CV Preprocessing + Gemini Multimodal Vision Pipeline</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>OpenCV Image Enhancement + Gemini Vision Assessment</span>
         </div>
       </div>
 

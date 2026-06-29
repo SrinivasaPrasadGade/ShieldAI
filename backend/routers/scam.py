@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/scam", tags=["Scam Detection"])
 @router.post("/analyze", response_model=ScamAnalyzeResponse)
 async def analyze_text(request: ScamAnalyzeRequest):
     """
-    Analyze text for scam patterns using Gemini AI + BERT zero-shot classification.
+    Analyze text for scam patterns using Gemini AI + Hugging Face zero-shot classification (BART-MNLI).
 
     Returns a composite risk score, classification, explanation, and recommended action.
     Automatically generates alerts for HIGH risk detections.
