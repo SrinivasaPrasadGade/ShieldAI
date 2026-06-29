@@ -16,6 +16,11 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile.api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     ports:
       - "8000:8000"
     environment:
@@ -52,11 +57,17 @@ services:
   worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile.api
+      dockerfile: backend/Dockerfile.worker
+      args:
+        ENABLE_ZERO_SHOT: ${ENABLE_ZERO_SHOT:-false}
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
       - REDIS_URL=redis://redis:6379
+      - ENABLE_ZERO_SHOT=${ENABLE_ZERO_SHOT:-false}
+      - ZERO_SHOT_MODEL=${ZERO_SHOT_MODEL:-facebook/bart-large-mnli}
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface
     volumes:
       - ./backend/firebase-credentials.json:/app/firebase-credentials.json
       - ./backend/data:/app/data

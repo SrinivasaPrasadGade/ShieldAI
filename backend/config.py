@@ -8,7 +8,7 @@ providing typed, validated settings with sensible defaults.
 import os
 from typing import List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, model_validator
 
 
 class Settings(BaseSettings):
@@ -47,8 +47,21 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
     GEMINI_TIMEOUT: int = 30  # seconds
-    BERT_MODEL: str = "facebook/bart-large-mnli"
-    ENABLE_BERT: bool = True  # Set to False to skip BERT loading on low-memory systems
+    ZERO_SHOT_MODEL: str = "facebook/bart-large-mnli"  # Hugging Face zero-shot classifier (BART-MNLI)
+    ENABLE_ZERO_SHOT: bool = False  # Set to True to enable the local HF zero-shot classifier
+
+    # ── HF Model Cache ───────────────────────────────────────────
+    HF_HOME: str = ""  # Override Hugging Face model cache directory
+
+    @model_validator(mode="before")
+    @classmethod
+    def _backward_compat_bert_vars(cls, values):
+        """Support legacy ENABLE_BERT / BERT_MODEL env vars for one release cycle."""
+        if "ENABLE_ZERO_SHOT" not in values and "ENABLE_BERT" in values:
+            values["ENABLE_ZERO_SHOT"] = values.pop("ENABLE_BERT")
+        if "ZERO_SHOT_MODEL" not in values and "BERT_MODEL" in values:
+            values["ZERO_SHOT_MODEL"] = values.pop("BERT_MODEL")
+        return values
 
     # ── Async Task Store ─────────────────────────────────────────
     TASK_TTL_HOURS: int = 24

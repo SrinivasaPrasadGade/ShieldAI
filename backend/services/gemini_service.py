@@ -9,6 +9,7 @@ Each method has a graceful degradation fallback.
 import json
 import os
 import re
+import time
 from typing import Optional, Any
 
 from logging_config import get_logger
@@ -178,6 +179,55 @@ class GeminiService:
     def is_available(self) -> bool:
         return self._available
 
+    # ── JSON Parsing Utility ─────────────────────────────────
+
+    def safe_parse_json_response(self, response_text: str) -> Optional[dict]:
+        """
+        Safely parse a Gemini response that should contain JSON.
+
+        Handles:
+        - Raw JSON
+        - JSON wrapped in markdown code fences (```json ... ```)
+        - JSON with leading/trailing whitespace
+
+        Returns:
+            Parsed dict, or None if parsing fails.
+        """
+        if not response_text:
+            return None
+
+        text = response_text.strip()
+
+        # Strip markdown code fences if present
+        fence_pattern = re.compile(r'^```(?:json)?\s*\n?(.*?)\n?\s*```$', re.DOTALL)
+        match = fence_pattern.match(text)
+        if match:
+            text = match.group(1).strip()
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            logger.warning("json_parse_failed", error=str(e), response_preview=text[:200])
+            return None
+
+    def build_model_metadata(
+        self,
+        latency_ms: float = 0.0,
+        fallback_used: bool = False,
+        prompt_version: str = "v1",
+    ) -> dict:
+        """Build standardized model metadata for result provenance."""
+        from config import settings
+        return {
+            "primary_provider": "gemini",
+            "primary_model": self.model_name,
+            "zero_shot_enabled": settings.ENABLE_ZERO_SHOT,
+            "zero_shot_model": settings.ZERO_SHOT_MODEL,
+            "prompt_version": prompt_version,
+            "latency_ms": round(latency_ms, 1),
+            "fallback_used": fallback_used,
+        }
+
     # ── Scam Text Analysis ───────────────────────────────────
 
     async def analyze_scam_text(self, text: str, language: str = "en") -> dict:
@@ -198,6 +248,7 @@ class GeminiService:
 
     async def _gemini_scam_analysis(self, text: str, language: str) -> dict:
         """Real Gemini API call for scam analysis."""
+        start = time.monotonic()
         contents = f"Analyze this report (Language hint: {language}):\n\n{text}"
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
@@ -208,10 +259,23 @@ class GeminiService:
                 temperature=0.1,
             ),
         )
+        latency_ms = (time.monotonic() - start) * 1000
 
-        result = json.loads(response.text)
+        result = self.safe_parse_json_response(response.text)
+        if result is None:
+            logger.error("gemini_scam_json_parse_failed", response_preview=response.text[:200])
+            # Fall back to heuristic on parse failure
+            result = self._fallback_scam_analysis(text)
+            result["model_metadata"] = self.build_model_metadata(
+                latency_ms=latency_ms, fallback_used=True, prompt_version="scam_v1"
+            )
+            return result
+
         # Ensure risk_score is bounded
         result["risk_score"] = max(0.0, min(1.0, float(result.get("risk_score", 0.5))))
+        result["model_metadata"] = self.build_model_metadata(
+            latency_ms=latency_ms, prompt_version="scam_v1"
+        )
         return result
 
     def _fallback_scam_analysis(self, text: str) -> dict:
@@ -331,6 +395,7 @@ class GeminiService:
 
     async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int]) -> dict:
         """Real Gemini Vision API call for currency analysis."""
+        start = time.monotonic()
         denom_hint = f"The user believes this is a Rs {denomination} note." if denomination else ""
         contents_text = f"Analyse this Indian currency note image. {denom_hint} Check all security features carefully."
 
@@ -346,9 +411,21 @@ class GeminiService:
                 temperature=0.1,
             ),
         )
+        latency_ms = (time.monotonic() - start) * 1000
 
-        result = json.loads(response.text)
+        result = self.safe_parse_json_response(response.text)
+        if result is None:
+            logger.error("gemini_currency_json_parse_failed", response_preview=response.text[:200])
+            result = self._fallback_currency_analysis(denomination)
+            result["model_metadata"] = self.build_model_metadata(
+                latency_ms=latency_ms, fallback_used=True, prompt_version="currency_v1"
+            )
+            return result
+
         result["confidence"] = max(0.0, min(1.0, float(result.get("confidence", 0.5))))
+        result["model_metadata"] = self.build_model_metadata(
+            latency_ms=latency_ms, prompt_version="currency_v1"
+        )
         return result
 
     def _fallback_currency_analysis(self, denomination: Optional[int] = None) -> dict:
@@ -431,7 +508,11 @@ class GeminiService:
             ),
         )
 
-        return json.loads(response.text)
+        result = self.safe_parse_json_response(response.text)
+        if result is None:
+            # Chat can gracefully fall back to plain text
+            return {"response": response.text.strip(), "risk_assessment": None}
+        return result
 
     def _fallback_chat(self, message: str) -> dict:
         """Template-based fallback chat responses."""

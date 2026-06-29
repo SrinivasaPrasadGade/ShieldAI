@@ -1,4 +1,11 @@
-# ── Core Framework ──────────────────────────────────────────
+# ── ShieldAI Full Requirements (backward compatible) ────────
+# Installs ALL dependencies for ALL services.
+# For targeted installs, use: requirements.api.txt, requirements.worker.txt,
+# requirements.realtime.txt, or requirements.dev.txt
+#
+# This file exists for backward compatibility with existing workflows.
+
+# Core Framework
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
@@ -7,21 +14,21 @@ pydantic>=2.0.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.1
 
-# ── Firebase ────────────────────────────────────────────────
+# Firebase
 firebase-admin>=6.5.0
 
-# ── AI / ML ─────────────────────────────────────────────────
+# AI / ML
 google-genai>=0.6.0
 transformers>=4.36.0
 torch>=2.1.0
 opencv-python-headless>=4.9.0
 numpy>=1.24.0
 
-# ── Logging ─────────────────────────────────────────────────
+# Logging
 structlog>=24.1.0
 aiokafka==0.10.0
 
-# ── Background Tasks & Realtime ─────────────────────────────
+# Background Tasks & Realtime
 celery>=5.3.0
 redis>=5.0.0
 flask>=3.0.0
@@ -29,8 +36,7 @@ flask-socketio>=5.3.0
 flask-cors>=4.0.0
 eventlet>=0.33.3
 
-# ── New Dependencies for Section 17 & Tests ────────────────
+# Graph Analysis & Tests
 networkx>=3.0
 python-louvain>=0.16
 pytest-asyncio>=0.23.0
-

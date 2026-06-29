@@ -66,12 +66,12 @@ async def lifespan(app: FastAPI):
     )
     logger.info("gemini_service_initialized", available=gemini_svc.is_available)
 
-    # 6. Initialize BERT (may take 30-60s on first run for model download)
-    if settings.ENABLE_BERT:
-        logger.info("bert_init_starting", message="This may take a moment on first run...")
+    # 6. Initialize zero-shot classifier (may take 30-60s on first run for model download)
+    if settings.ENABLE_ZERO_SHOT:
+        logger.info("zero_shot_init_starting", message="This may take a moment on first run...")
         from services.scam_detector import init_scam_detector
-        # Pre-load the ScamDetector (and BERT if enabled) during startup so it doesn't block the first request
-        init_scam_detector(enable_bert=settings.ENABLE_BERT, bert_model=settings.BERT_MODEL)
+        # Pre-load the ScamDetector (and zero-shot classifier if enabled) during startup so it doesn't block the first request
+        init_scam_detector(enable_zero_shot=settings.ENABLE_ZERO_SHOT, zero_shot_model=settings.ZERO_SHOT_MODEL)
 
     logger.info(
         "server_ready",
@@ -188,4 +188,48 @@ async def health_check():
             "sqlite": "connected" if sqlite_ok else "error",
             "firestore": "connected" if firestore_ok else "error",
         },
+    }
+
+
+# ── ML Health Check ──────────────────────────────────────────
+@app.get("/health/ml", tags=["System"])
+async def ml_health_check():
+    """
+    ML stack health check endpoint.
+    Reports availability of all AI/ML dependencies.
+    """
+    def _check_import(module_name: str) -> str:
+        try:
+            __import__(module_name)
+            return "available"
+        except ImportError:
+            return "not_installed"
+
+    # Check Gemini
+    from services.gemini_service import get_gemini_service
+    gemini_status = "available" if get_gemini_service().is_available else "unavailable"
+
+    # Check zero-shot classifier
+    zero_shot_status = "disabled"
+    if settings.ENABLE_ZERO_SHOT:
+        try:
+            from services.zero_shot_classifier import get_zero_shot_classifier
+            classifier = get_zero_shot_classifier()
+            if classifier and classifier.is_available:
+                zero_shot_status = "available"
+            elif classifier and classifier.load_error:
+                zero_shot_status = f"error: {classifier.load_error}"
+            else:
+                zero_shot_status = "enabled_not_loaded"
+        except Exception as e:
+            zero_shot_status = f"error: {str(e)}"
+
+    return {
+        "gemini": gemini_status,
+        "zero_shot": zero_shot_status,
+        "zero_shot_model": settings.ZERO_SHOT_MODEL,
+        "opencv": _check_import("cv2"),
+        "numpy": _check_import("numpy"),
+        "torch": _check_import("torch"),
+        "transformers": _check_import("transformers"),
     }

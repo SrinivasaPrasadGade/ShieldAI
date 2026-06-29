@@ -1,0 +1,15 @@
+# ── ShieldAI Worker Dependencies ────────────────────────────
+# The worker carries heavy ML libraries (PyTorch, transformers, OpenCV)
+-r requirements.base.txt
+
+# Kafka consumer
+aiokafka==0.10.0
+
+# Task queue
+celery>=5.3.0
+
+# ML / Computer Vision (only needed in worker)
+torch>=2.1.0
+transformers>=4.36.0
+opencv-python-headless>=4.9.0
+numpy>=1.24.0
