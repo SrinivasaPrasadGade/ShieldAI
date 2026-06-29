@@ -7,16 +7,16 @@ via Gemini's native audio capabilities.
 """
 
 import uuid
+import asyncio
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 
 from logging_config import get_logger
 from services.gemini_service import get_gemini_service
 
 logger = get_logger("shield_ai.scam_detector")
 
-# We defer the import of transformers to avoid hanging the API on startup when zero-shot is disabled.
-TRANSFORMERS_AVAILABLE = True
+# We no longer import transformers here directly; it is handled by the zero_shot_classifier service.
 
 
 # Scam classification candidate labels for zero-shot
@@ -118,7 +118,7 @@ class ScamDetector:
         gemini_score = gemini_result.get("risk_score", 0.0)
 
         # 2. Zero-shot classification (secondary signal)
-        zero_shot_result = self.zero_shot_classify(text)
+        zero_shot_result = await asyncio.to_thread(self.zero_shot_classify, text) if self._zero_shot_pipeline else None
         zero_shot_score = 0.0
 
         if zero_shot_result:
@@ -320,7 +320,7 @@ class ScamDetector:
 
 
 # Module-level singleton
-_scam_detector: Optional[ScamDetector] = None
+_scam_detector: ScamDetector | None = None
 
 
 def get_scam_detector() -> ScamDetector:

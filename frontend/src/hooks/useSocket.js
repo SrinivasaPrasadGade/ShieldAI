@@ -12,7 +12,6 @@ export const useSocket = (role = 'law_enforcement') => {
   const [latestToast, setLatestToast] = useState(null);
 
   useEffect(() => {
-    console.log(`Connecting to Socket.io server at: ${SOCKET_URL}`);
     const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       reconnectionAttempts: 10,
@@ -22,35 +21,26 @@ export const useSocket = (role = 'law_enforcement') => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('Socket.io connected successfully:', socket.id);
       setConnected(true);
       socket.emit('join_dashboard', { role });
     });
 
     socket.on('disconnect', () => {
-      console.log('Socket.io disconnected');
       setConnected(false);
     });
 
-    socket.on('joined', (data) => {
-      console.log('Joined Socket room:', data);
-    });
-
     socket.on('historical_alerts', (data) => {
-      console.log('Received historical alerts:', data.alerts);
       setAlerts(data.alerts);
       setFeed(data.alerts);
     });
 
     socket.on('new_alert', (alert) => {
-      console.log('🚨 NEW CRITICAL/HIGH ALERT RECEIVED:', alert);
-      setAlerts((prev) => [alert, ...prev]);
-      setLatestToast(alert);
+      setAlerts((prev) => [alert, ...prev].slice(0, 500));
+      setLatestToast({ ...alert, _ts: Date.now() });
     });
 
     socket.on('alert_feed_update', (alert) => {
-      console.log('New alert feed update:', alert);
-      setFeed((prev) => [alert, ...prev]);
+      setFeed((prev) => [alert, ...prev].slice(0, 500));
     });
 
     return () => {

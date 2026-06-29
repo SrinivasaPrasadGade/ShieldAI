@@ -121,7 +121,7 @@ class PhoneRiskService:
 
 
 # Module-level singleton
-_phone_risk_service: Optional[PhoneRiskService] = None
+_phone_risk_service: PhoneRiskService | None = None
 
 
 def get_phone_risk_service() -> PhoneRiskService:

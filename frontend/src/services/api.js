@@ -5,10 +5,18 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const client = axios.create({
   baseURL: API_BASE,
+  timeout: 30000, // 30 second timeout
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export const api = {
   // Scam Detection
@@ -27,7 +35,7 @@ export const api = {
   // Currency Verification
   verifyCurrency: async (imageFile, denomination = null) => {
     const formData = new FormData();
-    formData.append('file', imageFile);
+    formData.append('image', imageFile);
     if (denomination) {
       formData.append('denomination', denomination);
     }
@@ -64,6 +72,22 @@ export const api = {
 
   getGraphStats: async () => {
     const res = await client.get('/api/graph/stats');
+    return res.data;
+  },
+
+  // Geospatial Intelligence
+  getGeoIncidents: async (type = '', days = 7, state = '') => {
+    const params = { days };
+    if (type) params.type = type;
+    if (state) params.state = state;
+    const res = await client.get('/api/geo/incidents', { params });
+    return res.data;
+  },
+
+  getGeoHeatmap: async (type = '') => {
+    const params = {};
+    if (type) params.type = type;
+    const res = await client.get('/api/geo/heatmap', { params });
     return res.data;
   },
 

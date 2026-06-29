@@ -5,10 +5,14 @@ All environment variables are loaded via pydantic-settings BaseSettings,
 providing typed, validated settings with sensible defaults.
 """
 
-import os
 from typing import List
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field, model_validator
+
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -38,10 +42,21 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = "backend/firebase-credentials.json"
     FIREBASE_STORAGE_BUCKET: str = "shieldai-hackathon.appspot.com"  # Replace with actual bucket name
 
-    # ── Kafka ────────────────────────────────────────────────────
-    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
-    KAFKA_TOPIC_CURRENCY: str = "currency_verification"
-    KAFKA_TOPIC_EVIDENCE: str = "evidence_packaging"
+    @property
+    def sqlite_db_abs_path(self) -> str:
+        """Resolve SQLITE_DB_PATH to an absolute path relative to PROJECT_ROOT if it is relative."""
+        path = Path(self.SQLITE_DB_PATH)
+        if path.is_absolute():
+            return str(path)
+        return str((PROJECT_ROOT / path).resolve())
+
+    @property
+    def firebase_credentials_abs_path(self) -> str:
+        """Resolve FIREBASE_CREDENTIALS_PATH to an absolute path relative to PROJECT_ROOT if it is relative."""
+        path = Path(self.FIREBASE_CREDENTIALS_PATH)
+        if path.is_absolute():
+            return str(path)
+        return str((PROJECT_ROOT / path).resolve())
     
     # ── AI / ML ──────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
@@ -94,8 +109,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQUESTS: int = 60  # requests per window
     RATE_LIMIT_WINDOW_SECONDS: int = 60  # window duration
 
+    # ── Redis ────────────────────────────────────────────────
+    REDIS_URL: str = "redis://localhost:6379/0"
+
     model_config = {
-        "env_file": ".env",
+        "env_file": (PROJECT_ROOT / ".env", BASE_DIR / ".env", ".env"),
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
         "extra": "ignore",

@@ -14,7 +14,12 @@ export const CitizenChat = () => {
   ]);
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState('en');
-  const [sessionId] = useState(() => `sess-${Math.random().toString(36).substr(2, 9)}`);
+  const [sessionId] = useState(() => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `sess-${crypto.randomUUID()}`;
+    }
+    return `sess-${Math.random().toString(36).substring(2, 9)}-${Math.random().toString(36).substring(2, 9)}`;
+  });
   const chatEndRef = useRef(null);
 
   const demoScams = [
@@ -56,7 +61,6 @@ export const CitizenChat = () => {
       
       setChatHistory((prev) => [...prev, newResponse]);
     } catch (err) {
-      console.error('Chat error:', err);
       setChatHistory((prev) => [
         ...prev,
         {
