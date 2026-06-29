@@ -27,7 +27,7 @@ export const api = {
   // Currency Verification
   verifyCurrency: async (imageFile, denomination = null) => {
     const formData = new FormData();
-    formData.append('file', imageFile);
+    formData.append('image', imageFile);
     if (denomination) {
       formData.append('denomination', denomination);
     }
