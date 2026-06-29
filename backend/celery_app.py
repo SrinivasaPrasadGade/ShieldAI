@@ -8,7 +8,7 @@ app = Celery(
     "shield_ai",
     broker=redis_url,
     backend=redis_url,
-    include=["tasks.currency_tasks", "tasks.graph_tasks"]
+    include=["tasks.currency_tasks", "tasks.graph_tasks", "tasks.scam_tasks"]
 )
 
 # Optional configuration, see the Celery application user guide.

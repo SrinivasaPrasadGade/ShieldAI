@@ -129,6 +129,10 @@ class CitizenService:
             else:
                 logger.warning("firestore_offline_report_not_saved", report_id=report_id)
 
+            # Dispatch Celery task for async report analysis & geocoding
+            from tasks.scam_tasks import process_citizen_report_task
+            process_citizen_report_task.delay(report_id)
+
             # Smart Upgrade: Add report to fraud network graph in SQLite
             try:
                 from services.graph_service import get_graph_service
