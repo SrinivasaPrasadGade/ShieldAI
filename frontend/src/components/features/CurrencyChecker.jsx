@@ -3,6 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { Upload, HelpCircle, CheckCircle2, XCircle, ShieldAlert, Sparkles, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 
+const DEFAULT_FEATURES = {
+  intaglio_printing: 'UNCLEAR',
+  security_thread: 'UNCLEAR',
+  watermark: 'UNCLEAR',
+  microprinting: 'UNCLEAR',
+  serial_number_format: 'UNCLEAR',
+  colour_shift_ink: 'UNCLEAR',
+  paper_quality: 'UNCLEAR'
+};
+
 export const CurrencyChecker = () => {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -12,6 +22,21 @@ export const CurrencyChecker = () => {
   const [result, setResult] = useState(null);
   const [polling, setPolling] = useState(false);
   const [taskId, setTaskId] = useState('');
+
+  const normalizeCurrencyResult = (taskResult) => {
+    const resultData = taskResult.result || taskResult;
+    const failedFeatures = resultData.failed_features || [];
+    const featuresChecked = resultData.features_checked || {
+      ...DEFAULT_FEATURES,
+      ...Object.fromEntries(failedFeatures.map((feature) => [feature, 'FAIL']))
+    };
+
+    return {
+      ...resultData,
+      features_checked: featuresChecked,
+      analysis_narrative: resultData.analysis_narrative || resultData.analysis || 'Analysis complete.'
+    };
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -94,8 +119,8 @@ export const CurrencyChecker = () => {
         const checkRes = await api.getTaskResult(taskId);
         if (checkRes.status === 'processing') {
           setStatusText(`Analyzing with Gemini Vision... (${checkRes.progress || 'Authenticating features'})`);
-        } else if (checkRes.status === 'completed') {
-          setResult(checkRes.result);
+        } else if (checkRes.status === 'complete') {
+          setResult(normalizeCurrencyResult(checkRes));
           setPolling(false);
           setLoading(false);
           clearInterval(intervalId);
