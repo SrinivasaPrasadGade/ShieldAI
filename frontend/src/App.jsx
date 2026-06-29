@@ -7,7 +7,7 @@ import { FraudNetworkGraph } from './components/features/FraudNetworkGraph';
 import { CitizenChat } from './components/features/CitizenChat';
 import { CurrencyChecker } from './components/features/CurrencyChecker';
 import { useSocket } from './hooks/useSocket';
-import { BellRing, ShieldAlert, X } from 'lucide-react';
+import { ShieldAlert, X } from 'lucide-react';
 
 function App() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -15,7 +15,7 @@ function App() {
   const [showToast, setShowToast] = useState(false);
   const [toastData, setToastData] = useState(null);
 
-  const { alerts, feed, connected, latestToast, setLatestToast } = useSocket('law_enforcement');
+  const { feed, connected, latestToast } = useSocket('law_enforcement');
 
   // Trigger real-time toast notifications
   useEffect(() => {
@@ -82,7 +82,7 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>
                 <ShieldAlert size={16} />
-                🚨 HIGH RISK ALERT
+                HIGH RISK ALERT
               </div>
               <button 
                 onClick={(e) => { e.stopPropagation(); setShowToast(false); }}

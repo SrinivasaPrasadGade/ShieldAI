@@ -24,26 +24,41 @@ export const GeospatialMap = ({ activeAlert = null }) => {
     const fetchIncidents = async () => {
       setLoading(true);
       try {
-        await api.getNetwork(); 
-        const mockIncidents = [
-          { id: 1, type: 'digital_arrest', city: 'Hyderabad', lat: 17.3850, lng: 78.4867, severity: 'HIGH', title: 'CBI Video Call Scam' },
-          { id: 2, type: 'digital_arrest', city: 'Mumbai', lat: 19.0760, lng: 72.8777, severity: 'HIGH', title: 'TRAI SIM Block Warning' },
-          { id: 3, type: 'digital_arrest', city: 'Delhi', lat: 28.7041, lng: 77.1025, severity: 'CRITICAL', title: 'Operation Mamba Cyber Arrest' },
-          { id: 4, type: 'digital_arrest', city: 'Bengaluru', lat: 12.9716, lng: 77.5946, severity: 'HIGH', title: 'HDFC Bank KYC Alert' },
-          { id: 5, type: 'ficn', city: 'Malda', lat: 25.0108, lng: 88.1406, severity: 'HIGH', title: 'Counterfeit Seizure Rs 500' },
-          { id: 6, type: 'ficn', city: 'Amritsar', lat: 31.6340, lng: 74.8723, severity: 'HIGH', title: 'Fake Currency seizure at border' },
-          { id: 7, type: 'investment_fraud', city: 'Pune', lat: 18.5204, lng: 73.8567, severity: 'MEDIUM', title: 'BullTrade Telegram Scam' },
-          { id: 8, type: 'investment_fraud', city: 'Chennai', lat: 13.0827, lng: 80.2707, severity: 'MEDIUM', title: 'Hotel Rating Scam' },
-        ];
-        setIncidents(mockIncidents);
+        const data = mapMode === 'heatmap'
+          ? await api.getGeoHeatmap()
+          : await api.getGeoIncidents('', 30);
+
+        const normalizedIncidents = mapMode === 'heatmap'
+          ? (data.points || []).map((point, index) => ({
+              id: `heat-${index}`,
+              type: 'hotspot',
+              city: 'Incident cluster',
+              lat: point.lat,
+              lng: point.lng,
+              severity: point.weight >= 5 ? 'HIGH' : 'MEDIUM',
+              title: `${point.weight} reports in this area`,
+              weight: point.weight
+            }))
+          : (data.incidents || []).map((incident, index) => ({
+              id: incident.id || `${incident.type || 'incident'}-${index}`,
+              type: incident.type || 'incident',
+              city: incident.city || 'Unknown',
+              lat: incident.lat,
+              lng: incident.lng,
+              severity: incident.severity || 'MEDIUM',
+              title: `${(incident.type || 'incident').replace(/_/g, ' ')} report`
+            }));
+
+        setIncidents(normalizedIncidents.filter((incident) => Number.isFinite(incident.lat) && Number.isFinite(incident.lng)));
       } catch (err) {
         console.error('Error fetching geo incidents:', err);
+        setIncidents([]);
       } finally {
         setLoading(false);
       }
     };
     fetchIncidents();
-  }, [activeAlert]);
+  }, [mapMode]);
 
   return (
     <div className="glass-panel" style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '400px' }}>
@@ -79,6 +94,18 @@ export const GeospatialMap = ({ activeAlert = null }) => {
             attribution='&copy; CARTO'
           />
           <MapController activeAlert={activeAlert} />
+
+          {loading && (
+            <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', fontSize: '0.75rem' }}>
+              Loading incident map...
+            </div>
+          )}
+
+          {!loading && incidents.length === 0 && (
+            <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+              No incidents found for the selected view.
+            </div>
+          )}
 
           {incidents.map((inc) => {
             const isCritical = inc.severity === 'CRITICAL';

@@ -67,6 +67,22 @@ export const api = {
     return res.data;
   },
 
+  // Geospatial Intelligence
+  getGeoIncidents: async (type = '', days = 7, state = '') => {
+    const params = { days };
+    if (type) params.type = type;
+    if (state) params.state = state;
+    const res = await client.get('/api/geo/incidents', { params });
+    return res.data;
+  },
+
+  getGeoHeatmap: async (type = '') => {
+    const params = {};
+    if (type) params.type = type;
+    const res = await client.get('/api/geo/heatmap', { params });
+    return res.data;
+  },
+
   // Citizen Shield
   sendChatMessage: async (message, sessionId, language = 'en') => {
     const res = await client.post('/api/citizen/chat', { message, session_id: sessionId, language });

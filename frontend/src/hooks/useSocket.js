@@ -43,7 +43,7 @@ export const useSocket = (role = 'law_enforcement') => {
     });
 
     socket.on('new_alert', (alert) => {
-      console.log('🚨 NEW CRITICAL/HIGH ALERT RECEIVED:', alert);
+      console.log('NEW CRITICAL/HIGH ALERT RECEIVED:', alert);
       setAlerts((prev) => [alert, ...prev]);
       setLatestToast(alert);
     });

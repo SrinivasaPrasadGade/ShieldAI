@@ -1,6 +1,6 @@
 // frontend/src/components/features/CurrencyChecker.jsx
 import React, { useState, useEffect } from 'react';
-import { Upload, HelpCircle, CheckCircle2, XCircle, ShieldAlert, Sparkles, RefreshCw } from 'lucide-react';
+import { Upload, Sparkles, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 
 const DEFAULT_FEATURES = {
@@ -302,7 +302,7 @@ export const CurrencyChecker = () => {
                   ))}
                 </div>
 
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineStyle: 'italic', padding: '10px', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', borderLeft: `3px solid ${result.verdict === 'GENUINE' ? 'var(--accent-green)' : 'var(--accent-red)'}` }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', padding: '10px', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', borderLeft: `3px solid ${result.verdict === 'GENUINE' ? 'var(--accent-green)' : 'var(--accent-red)'}` }}>
                   <strong>Note: </strong>{result.analysis_narrative}
                 </div>
               </div>
