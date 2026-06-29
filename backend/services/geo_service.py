@@ -7,6 +7,7 @@ heatmap data, hotspot detection, and city-level statistics.
 
 from typing import Optional
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from logging_config import get_logger
 from models.database import get_sqlite_connection
@@ -41,9 +42,10 @@ class GeoService:
             query += " AND incident_type = ?"
             params.append(incident_type)
 
-        if days:
-            query += " AND created_at >= datetime('now', ?)"
-            params.append(f"-{days} days")
+        if days is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            query += " AND created_at >= ?"
+            params.append(cutoff.isoformat())
 
         if state:
             query += " AND state = ?"
@@ -203,7 +205,7 @@ class GeoService:
 
 
 # Module-level singleton
-_geo_service: Optional[GeoService] = None
+_geo_service: GeoService | None = None
 
 
 def get_geo_service() -> GeoService:

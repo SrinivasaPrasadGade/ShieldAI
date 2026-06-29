@@ -4,10 +4,15 @@ import sys
 import json
 import time
 import threading
+import logging
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, join_room
 from flask_cors import CORS
 import redis
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("shield_ai.realtime")
 
 # Add current directory to path to allow importing backend services
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -15,31 +20,37 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(__name__)
 CORS(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174").split(",")
+socketio = SocketIO(app, cors_allowed_origins=allowed_origins, async_mode="threading")
 redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
-print(f"Connecting to Redis at: {redis_url}")
+logger.info(f"Connecting to Redis at: {redis_url}")
 
 @socketio.on('connect')
-def handle_connect():
-    print(f"Client connected: {request.sid}")
+def handle_connect(auth=None):
+    token = request.args.get('token', '')
+    expected = os.environ.get('REALTIME_AUTH_TOKEN', '')
+    if expected and token != expected:
+        logger.warning(f"Unauthorized connection attempt from client: {request.sid}")
+        return False  # Reject connection
+    logger.info(f"Client connected: {request.sid}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print(f"Client disconnected: {request.sid}")
+    logger.info(f"Client disconnected: {request.sid}")
 
 @socketio.on('join_dashboard')
 def handle_join(data):
     role = data.get("role", "citizen")
     join_room(role)
-    print(f"Client {request.sid} joined room: {role}")
+    logger.info(f"Client {request.sid} joined room: {role}")
     emit("joined", {"room": role, "status": "connected"})
 
     # Dashboard State Sync: Send recent alerts to Law Enforcement on join to avoid blank state
     if role == "law_enforcement":
         alerts = fetch_recent_alerts()
         if alerts:
-            print(f"Syncing {len(alerts)} historical alerts to client {request.sid}")
+            logger.info(f"Syncing {len(alerts)} historical alerts to client {request.sid}")
             emit("historical_alerts", {"alerts": alerts})
 
 def fetch_recent_alerts():
@@ -54,7 +65,7 @@ def fetch_recent_alerts():
         loop.close()
         return res.get("alerts", [])
     except Exception as e:
-        print(f"Error fetching historical alerts: {e}")
+        logger.error(f"Error fetching historical alerts: {e}")
         return []
 
 def listen_for_alerts_with_retry():
@@ -62,11 +73,11 @@ def listen_for_alerts_with_retry():
     backoff = 1.0
     while True:
         try:
-            print("Attempting to connect to Redis pub/sub...")
+            logger.info("Attempting to connect to Redis pub/sub...")
             r = redis.Redis.from_url(redis_url, decode_responses=True)
             pubsub = r.pubsub()
             pubsub.subscribe("new_alerts")
-            print("Successfully subscribed to Redis channel: new_alerts")
+            logger.info("Successfully subscribed to Redis channel: new_alerts")
             backoff = 1.0  # Reset backoff on success
             
             for message in pubsub.listen():
@@ -74,7 +85,7 @@ def listen_for_alerts_with_retry():
                     try:
                         alert = json.loads(message["data"])
                         severity = alert.get("severity", "MEDIUM")
-                        print(f"New alert received from Redis pub/sub: {alert.get('id')} ({severity})")
+                        logger.info(f"New alert received from Redis pub/sub: {alert.get('id')} ({severity})")
                         
                         # Critical and High alerts go specifically to law enforcement room
                         if severity in ["CRITICAL", "HIGH"]:
@@ -83,14 +94,14 @@ def listen_for_alerts_with_retry():
                         # All alerts go to the general feed
                         socketio.emit("alert_feed_update", alert, to="law_enforcement")
                     except Exception as parse_err:
-                        print(f"Error parsing alert message: {parse_err}")
+                        logger.error(f"Error parsing alert message: {parse_err}")
                         
         except (redis.ConnectionError, redis.TimeoutError) as conn_err:
-            print(f"Redis connection error: {conn_err}. Reconnecting in {backoff}s...")
+            logger.warning(f"Redis connection error: {conn_err}. Reconnecting in {backoff}s...")
             time.sleep(backoff)
             backoff = min(backoff * 2, 60.0)  # Exponential backoff capped at 60s
         except Exception as general_err:
-            print(f"Unexpected error in Redis listener: {general_err}. Reconnecting in 5s...")
+            logger.error(f"Unexpected error in Redis listener: {general_err}. Reconnecting in 5s...")
             time.sleep(5)
 
 # Start the Redis listener thread
@@ -98,5 +109,5 @@ threading.Thread(target=listen_for_alerts_with_retry, daemon=True).start()
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
-    print(f"Starting realtime server on port {port}...")
-    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
+    logger.info(f"Starting realtime server on port {port}...")
+    socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=False)

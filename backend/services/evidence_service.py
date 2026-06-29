@@ -44,12 +44,20 @@ class EvidenceService:
                 cluster = dict(cluster_row)
 
                 # 2. Fetch all entities in the cluster
-                entities = [
+                raw_entities = [
                     dict(row) for row in conn.execute(
                         "SELECT * FROM entities WHERE cluster_id = ? ORDER BY risk_score DESC",
                         (cluster_id,),
                     ).fetchall()
                 ]
+                
+                # Mask/redact sensitive values (PII)
+                entities = []
+                for entity in raw_entities:
+                    if entity.get("entity_type") == "phone":
+                        p = entity["value"]
+                        entity["value"] = p[-4:].rjust(len(p), '*') if len(p) > 4 else p
+                    entities.append(entity)
 
                 # 3. Fetch all relationships between these entities
                 entity_ids = [e["id"] for e in entities]
@@ -77,12 +85,25 @@ class EvidenceService:
                         doc = db.collection("fraud_reports").document(rid).get()
                         if doc.exists:
                             data = doc.to_dict()
+                            
+                            # Mask phone numbers in linked reports
+                            phone_numbers = data.get("phone_numbers", [])
+                            masked_phones = [p[-4:].rjust(len(p), '*') if len(p) > 4 else p for p in phone_numbers]
+                            
+                            # Clean/redact description of email addresses and phone numbers
+                            desc = data.get("description", "")
+                            import re
+                            # Redact email addresses
+                            desc = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[REDACTED_EMAIL]', desc)
+                            # Redact phone numbers (simple pattern)
+                            desc = re.sub(r'\+?\d{10,12}', '[REDACTED_PHONE]', desc)
+
                             linked_reports.append({
                                 "id": rid,
                                 "report_type": data.get("report_type", "unknown"),
-                                "description": data.get("description", ""),
+                                "description": desc,
                                 "risk_score": data.get("risk_score", 0),
-                                "phone_numbers": data.get("phone_numbers", []),
+                                "phone_numbers": masked_phones,
                                 "created_at": str(data.get("created_at", "")),
                             })
                 except Exception as e:
@@ -175,7 +196,7 @@ class EvidenceService:
 
 
 # Module-level singleton
-_evidence_service: Optional[EvidenceService] = None
+_evidence_service: EvidenceService | None = None
 
 
 def get_evidence_service() -> EvidenceService:

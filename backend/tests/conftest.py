@@ -7,10 +7,27 @@ backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
+import pytest
+import tempfile
+import shutil
+
 # Set up environment variables for testing
 os.environ["SQLITE_DB_PATH"] = "backend/shield_ai_test.db"
 os.environ["ENABLE_ZERO_SHOT"] = "false"
 os.environ["GEMINI_API_KEY"] = "mock-key"
+
+@pytest.fixture(scope="session", autouse=True)
+def test_db_setup():
+    temp_dir = tempfile.mkdtemp()
+    db_path = os.path.join(temp_dir, "shield_ai_test.db")
+    os.environ["SQLITE_DB_PATH"] = db_path
+    from models.database import init_sqlite_db
+    init_sqlite_db()
+    yield
+    try:
+        shutil.rmtree(temp_dir)
+    except Exception:
+        pass
 
 # Create mock objects
 mock_firestore_client = mock.MagicMock()

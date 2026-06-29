@@ -11,9 +11,9 @@ def test_graph_add_and_cluster():
     
     # Clean up any potential test entities from previous runs
     with get_sqlite_connection() as conn:
-        conn.execute("DELETE FROM entities WHERE id LIKE 'victim_test_report_%' OR id LIKE 'phone_+919900%' OR id LIKE 'account_ACC9900%'")
-        conn.execute("DELETE FROM relationships WHERE linked_report_id LIKE 'test_report_%'")
-        conn.execute("DELETE FROM fraud_clusters WHERE id >= 9000")
+        conn.execute("DELETE FROM entities")
+        conn.execute("DELETE FROM relationships")
+        conn.execute("DELETE FROM fraud_clusters")
         
     try:
         # Add a small mock network structure to trigger Louvain partitioning (needs >= 3 nodes)
@@ -78,6 +78,6 @@ def test_graph_add_and_cluster():
     finally:
         # Cleanup
         with get_sqlite_connection() as conn:
-            conn.execute("DELETE FROM entities WHERE id LIKE 'victim_test_report_%' OR id LIKE 'phone_+919900%' OR id LIKE 'account_ACC9900%'")
-            conn.execute("DELETE FROM relationships WHERE linked_report_id LIKE 'test_report_%'")
-            conn.execute("DELETE FROM fraud_clusters WHERE id >= 9000")
+            conn.execute("DELETE FROM entities")
+            conn.execute("DELETE FROM relationships")
+            conn.execute("DELETE FROM fraud_clusters")

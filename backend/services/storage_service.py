@@ -4,7 +4,6 @@ Handles uploading temporary and permanent files to cloud storage.
 """
 
 import uuid
-from typing import Optional
 from firebase_admin import storage
 from models.database import get_firestore_client  # ensures firebase is initialized
 from config import settings
@@ -39,7 +38,7 @@ class StorageService:
             return f"gs://{settings.FIREBASE_STORAGE_BUCKET}/{filename}"
         except Exception as e:
             logger.error("file_upload_failed", error=str(e), filename=filename)
-            raise e
+            raise
 
     def download_file(self, uri: str) -> bytes:
         """
@@ -51,6 +50,8 @@ class StorageService:
             
             # Parse bucket and path
             path_parts = uri.replace("gs://", "").split("/", 1)
+            if len(path_parts) < 2 or not path_parts[1]:
+                raise ValueError(f"Invalid GCS URI format: {uri}. Expected gs://bucket/path")
             bucket_name = path_parts[0]
             blob_path = path_parts[1]
             
@@ -61,10 +62,12 @@ class StorageService:
             return file_bytes
         except Exception as e:
             logger.error("file_download_failed", error=str(e), uri=uri)
-            raise e
+            raise
 
-# Singleton
-storage_service = StorageService()
+_storage_service: StorageService | None = None
 
 def get_storage_service() -> StorageService:
-    return storage_service
+    global _storage_service
+    if _storage_service is None:
+        _storage_service = StorageService()
+    return _storage_service

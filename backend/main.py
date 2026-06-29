@@ -10,6 +10,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
@@ -97,8 +98,8 @@ app = FastAPI(
     ),
     version=settings.APP_VERSION,
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # ── Middleware Stack (order matters: last added = first executed) ───
@@ -179,16 +180,25 @@ async def health_check():
     except Exception:
         pass
 
-    return {
-        "status": "healthy",
-        "version": settings.APP_VERSION,
-        "uptime_seconds": uptime_seconds,
-        "services": {
-            "gemini": "available" if gemini_available else "unavailable (using fallback heuristics)",
-            "sqlite": "connected" if sqlite_ok else "error",
-            "firestore": "connected" if firestore_ok else "error",
-        },
-    }
+    status = "healthy"
+    status_code = 200
+    if not sqlite_ok:
+        status = "degraded"
+        status_code = 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": status,
+            "version": settings.APP_VERSION,
+            "uptime_seconds": uptime_seconds,
+            "services": {
+                "gemini": "available" if gemini_available else "unavailable (using fallback heuristics)",
+                "sqlite": "connected" if sqlite_ok else "error",
+                "firestore": "connected" if firestore_ok else "error",
+            },
+        }
+    )
 
 
 # ── ML Health Check ──────────────────────────────────────────

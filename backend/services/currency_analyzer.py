@@ -14,7 +14,6 @@ from config import settings
 from models import task_store
 from services.gemini_service import get_gemini_service
 from services.storage_service import get_storage_service
-from services.kafka_producer import producer_service
 
 logger = get_logger("shield_ai.currency")
 
@@ -169,7 +168,7 @@ class CurrencyAnalyzer:
 
     async def start_verification(self, image_bytes: bytes, content_type: str, denomination: Optional[int] = None, location: Optional[str] = None) -> str:
         """
-        Create a task for async currency verification via Kafka.
+        Create a task for async currency verification via Celery.
 
         Args:
             image_bytes: Raw image bytes
@@ -186,16 +185,11 @@ class CurrencyAnalyzer:
         storage = get_storage_service()
         file_url = storage.upload_file(image_bytes, content_type, folder="currency_scans")
 
-        # Publish to Kafka
-        message = {
-            "task_id": task_id,
-            "file_url": file_url,
-            "denomination": denomination,
-            "location": location,
-        }
-        await producer_service.publish(settings.KAFKA_TOPIC_CURRENCY, message)
+        # Dispatch Celery task
+        from tasks.currency_tasks import verify_currency_task
+        verify_currency_task.delay(task_id, file_url, denomination, location)
 
-        logger.info("verification_queued_to_kafka", task_id=task_id, denomination=denomination)
+        logger.info("verification_queued_to_celery", task_id=task_id, denomination=denomination)
         return task_id
 
     async def run_verification(self, task_id: str, file_url: str = None, denomination: Optional[int] = None, location: Optional[str] = None) -> None:
@@ -368,18 +362,21 @@ class CurrencyAnalyzer:
         """
         try:
             from models.database import get_firestore_client
+            from services.firestore_utils import count_query
             db = get_firestore_client()
 
             checks_ref = db.collection("currency_checks")
-            all_checks = list(checks_ref.stream())
+            all_checks = list(checks_ref.limit(1000).stream())
 
-            total = len(all_checks)
-            ficn = 0
+            total = count_query(checks_ref) or len(all_checks)
+            ficn_query = checks_ref.where("verdict", "in", ["COUNTERFEIT", "SUSPICIOUS"])
+            ficn_count = count_query(ficn_query)
+            ficn = ficn_count or 0
             denominations: dict = {}
 
             for doc in all_checks:
                 data = doc.to_dict()
-                if data.get("verdict") in ("COUNTERFEIT", "SUSPICIOUS"):
+                if ficn_count is None and data.get("verdict") in ("COUNTERFEIT", "SUSPICIOUS"):
                     ficn += 1
                 denom = str(data.get("denomination", "unknown"))
                 denominations[denom] = denominations.get(denom, 0) + 1
@@ -402,7 +399,7 @@ class CurrencyAnalyzer:
 
 
 # Module-level singleton
-_currency_analyzer: Optional[CurrencyAnalyzer] = None
+_currency_analyzer: CurrencyAnalyzer | None = None
 
 
 def get_currency_analyzer() -> CurrencyAnalyzer:

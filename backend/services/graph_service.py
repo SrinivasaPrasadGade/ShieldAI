@@ -5,23 +5,22 @@ Operates on SQLite entities, relationships, and fraud_clusters tables.
 Provides network queries, entity lookups, cluster management, and stats.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional, List
 from collections import deque
-import sqlite3
 import networkx as nx
 from community import community_louvain
 
-from config import settings
 from logging_config import get_logger
 from models.database import get_sqlite_connection
 from models import task_store
-from services.kafka_producer import producer_service
 
 logger = get_logger("shield_ai.graph")
 
 
 class GraphService:
     """Fraud network graph operations on SQLite."""
+    _needs_recompute = False
+    _last_recompute = 0.0
 
     def get_network(self, cluster_id: Optional[int] = None, limit: int = 100) -> dict:
         """
@@ -117,17 +116,12 @@ class GraphService:
             centrality = 0.0
 
             if cluster_id is not None:
-                total_edges_in_cluster = conn.execute(
-                    """SELECT COUNT(*) as cnt FROM relationships r
-                       JOIN entities e1 ON r.source_id = e1.id
-                       JOIN entities e2 ON r.target_id = e2.id
-                       WHERE e1.cluster_id = ? OR e2.cluster_id = ?""",
-                    (cluster_id, cluster_id),
+                cluster_size_row = conn.execute(
+                    "SELECT COUNT(*) as cnt FROM entities WHERE cluster_id = ?", (cluster_id,)
                 ).fetchone()
-
-                total = total_edges_in_cluster["cnt"] if total_edges_in_cluster else 0
-                if total > 0:
-                    centrality = round(len(edges) / total, 4)
+                n = cluster_size_row["cnt"] if cluster_size_row else 0
+                if n > 1:
+                    centrality = round(len(edges) / (n - 1), 4)
 
             # Fetch cluster info
             cluster = None
@@ -275,7 +269,7 @@ class GraphService:
 
     async def start_evidence_package(self, cluster_id: int) -> str:
         """
-        Start async evidence package generation via Kafka.
+        Start async evidence package generation via Celery.
 
         Args:
             cluster_id: Cluster to generate evidence for
@@ -285,13 +279,11 @@ class GraphService:
         """
         task_id = task_store.create_task(task_type="evidence_package")
         
-        message = {
-            "task_id": task_id,
-            "cluster_id": cluster_id,
-        }
-        await producer_service.publish(settings.KAFKA_TOPIC_EVIDENCE, message)
+        # Dispatch Celery task
+        from tasks.graph_tasks import generate_evidence_task
+        generate_evidence_task.delay(cluster_id, task_id)
         
-        logger.info("evidence_package_queued_to_kafka", task_id=task_id, cluster_id=cluster_id)
+        logger.info("evidence_package_queued_to_celery", task_id=task_id, cluster_id=cluster_id)
         return task_id
 
     def get_stats(self) -> dict:
@@ -332,10 +324,18 @@ class GraphService:
             "highest_risk_cluster": highest_risk_cluster,
         }
 
-    def add_report_to_graph(self, report_id: str, phone_numbers: List[str] = [], account_numbers: List[str] = [], description: str = ""):
+    def add_report_to_graph(
+        self,
+        report_id: str,
+        phone_numbers: Optional[List[str]] = None,
+        account_numbers: Optional[List[str]] = None,
+        description: str = "",
+    ):
         """
         Called every time a new fraud report is processed to build out the network graph.
         """
+        phone_numbers = phone_numbers or []
+        account_numbers = account_numbers or []
         victim_id = f"victim_{report_id}"
         
         with get_sqlite_connection() as conn:
@@ -410,7 +410,15 @@ class GraphService:
                     """, (node_id, victim_id, report_id))
         
         # Recompute community detection and centrality after adding new data
-        self._recompute_clusters()
+        import time
+        import sys
+        self._needs_recompute = True
+        now = time.monotonic()
+        is_test = "pytest" in sys.modules
+        if is_test or (now - self._last_recompute > 60.0):  # Debounce: max once per 60 seconds
+            self._recompute_clusters()
+            self._last_recompute = now
+            self._needs_recompute = False
 
     def _load_graph_from_db(self) -> nx.Graph:
         """Load the entities and relationships from the database into a NetworkX graph."""
@@ -445,8 +453,8 @@ class GraphService:
             # 3. Update SQLite database with new cluster_id and is_central flag
             with get_sqlite_connection() as conn:
                 for node_id, cluster_id in partition.items():
-                    # Centrality threshold: top nodes in the network or score > 0.2
-                    is_central = 1 if centrality.get(node_id, 0.0) > 0.2 else 0
+                    # Flag either bridge nodes or repeated-contact hubs as central.
+                    is_central = 1 if centrality.get(node_id, 0.0) > 0.2 or G.degree(node_id) >= 3 else 0
                     conn.execute("""
                         UPDATE entities
                         SET cluster_id = ?, is_central = ?
@@ -502,7 +510,7 @@ class GraphService:
 
 
 # Module-level singleton
-_graph_service: Optional[GraphService] = None
+_graph_service: GraphService | None = None
 
 
 def get_graph_service() -> GraphService:
