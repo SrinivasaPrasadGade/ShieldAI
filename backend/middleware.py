@@ -7,7 +7,8 @@ and global exception handling.
 
 import time
 import uuid
-from collections import defaultdict
+import random
+import asyncio
 from typing import Callable
 
 from fastapi import FastAPI, Request, Response
@@ -73,6 +74,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._buckets: dict[str, list[float]] = {}
+        self._lock = asyncio.Lock()
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip rate limiting for health checks and docs
@@ -82,26 +84,33 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
 
-        # Clean up expired buckets with a small probability (1%) to prevent memory leaks
-        import random
-        if random.random() < 0.01:
-            expired_ips = [
-                ip for ip, timestamps in self._buckets.items()
-                if not timestamps or now - timestamps[-1] >= self.window_seconds
-            ]
-            for ip in expired_ips:
-                self._buckets.pop(ip, None)
+        async with self._lock:
+            # Clean up expired buckets with a small probability (1%) to prevent memory leaks
+            if random.random() < 0.01:
+                expired_ips = [
+                    ip for ip, timestamps in self._buckets.items()
+                    if not timestamps or now - timestamps[-1] >= self.window_seconds
+                ]
+                for ip in expired_ips:
+                    self._buckets.pop(ip, None)
 
-        # Get existing or create new bucket list
-        bucket = self._buckets.get(client_ip, [])
-        # Filter timestamps to keep only current window
-        bucket = [t for t in bucket if now - t < self.window_seconds]
+            # Get existing or create new bucket list
+            bucket = self._buckets.get(client_ip, [])
+            # Filter timestamps to keep only current window
+            bucket = [t for t in bucket if now - t < self.window_seconds]
 
-        if len(bucket) >= self.max_requests:
-            if bucket:
-                self._buckets[client_ip] = bucket
+            if len(bucket) >= self.max_requests:
+                if bucket:
+                    self._buckets[client_ip] = bucket
+                else:
+                    self._buckets.pop(client_ip, None)
+                exceeded = True
             else:
-                self._buckets.pop(client_ip, None)
+                bucket.append(now)
+                self._buckets[client_ip] = bucket
+                exceeded = False
+
+        if exceeded:
             logger.warning(
                 "rate_limit_exceeded",
                 client_ip=client_ip,
@@ -116,8 +125,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        bucket.append(now)
-        self._buckets[client_ip] = bucket
         return await call_next(request)
 
 

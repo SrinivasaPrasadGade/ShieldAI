@@ -42,7 +42,7 @@ class GeoService:
             query += " AND incident_type = ?"
             params.append(incident_type)
 
-        if days:
+        if days is not None:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
             query += " AND created_at >= ?"
             params.append(cutoff.isoformat())

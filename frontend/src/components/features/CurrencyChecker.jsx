@@ -22,6 +22,7 @@ export const CurrencyChecker = () => {
   const [result, setResult] = useState(null);
   const [polling, setPolling] = useState(false);
   const [taskId, setTaskId] = useState('');
+  const [errorText, setErrorText] = useState('');
 
   const normalizeCurrencyResult = (taskResult) => {
     const resultData = taskResult.result || taskResult;
@@ -42,7 +43,10 @@ export const CurrencyChecker = () => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(selectedFile);
+      });
       setResult(null);
     }
   };
@@ -54,6 +58,7 @@ export const CurrencyChecker = () => {
     setResult(null);
 
     try {
+      setErrorText('');
       // Start verification task
       const verifyRes = await api.verifyCurrency(file, parseInt(denomination));
       const tid = verifyRes.task_id;
@@ -61,10 +66,9 @@ export const CurrencyChecker = () => {
       setPolling(true);
       setStatusText('OpenCV Preprocessing: Adjusting skew and contrast...');
     } catch (err) {
-      console.error('Verify error:', err);
       setStatusText('');
       setLoading(false);
-      alert('Verification server is offline. Falling back to local heuristic simulator.');
+      setErrorText('Verification server is offline. Falling back to local heuristic simulator.');
       
       // Local fallback simulator for testing
       simulateVerification();
@@ -131,7 +135,6 @@ export const CurrencyChecker = () => {
           clearInterval(intervalId);
         }
       } catch (err) {
-        console.error('Polling error:', err);
         setPolling(false);
         setLoading(false);
         clearInterval(intervalId);
@@ -243,6 +246,12 @@ export const CurrencyChecker = () => {
             <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-glass)', textAlign: 'center' }}>
               <div className="loader" style={{ width: '20px', height: '20px', border: '2px solid var(--text-muted)', borderTopColor: 'var(--accent-purple)', borderRadius: '50%', display: 'inline-block', marginBottom: '8px' }} />
               <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{statusText}</div>
+            </div>
+          )}
+
+          {errorText && (
+            <div style={{ padding: '12px', background: 'var(--accent-red-glow)', borderRadius: '8px', border: '1px solid var(--accent-red)', fontSize: '0.85rem', color: 'var(--accent-red)', textAlign: 'center' }}>
+              {errorText}
             </div>
           )}
         </div>

@@ -7,8 +7,6 @@ Each method has a graceful degradation fallback.
 """
 
 import json
-import os
-import re
 from typing import Optional, Any
 
 from logging_config import get_logger
@@ -209,10 +207,18 @@ class GeminiService:
             ),
         )
 
-        result = json.loads(response.text)
-        # Ensure risk_score is bounded
-        result["risk_score"] = max(0.0, min(1.0, float(result.get("risk_score", 0.5))))
-        return result
+        raw = json.loads(response.text)
+        # Map Gemini response fields to internal schema
+        return {
+            "risk_score": max(0.0, min(1.0, float(raw.get("confidence", raw.get("risk_score", 0.5))))),
+            "risk_label": raw.get("risk_level", raw.get("risk_label", "MEDIUM")),
+            "classification": raw.get("fraud_type", raw.get("classification", "unknown")),
+            "scam_type": raw.get("fraud_type"),
+            "explanation": raw.get("explanation", "Analysis complete."),
+            "recommended_action": raw.get("recommended_action", "Stay vigilant."),
+            "extracted_entities": raw.get("extracted_entities", {}),
+            "key_red_flags": raw.get("key_red_flags", []),
+        }
 
     def _fallback_scam_analysis(self, text: str) -> dict:
         """Keyword-based heuristic fallback for scam analysis."""
@@ -314,7 +320,7 @@ class GeminiService:
 
     # ── Currency Image Analysis ──────────────────────────────
 
-    async def analyze_currency_image(self, image_bytes: bytes, denomination: Optional[int] = None) -> dict:
+    async def analyze_currency_image(self, image_bytes: bytes, denomination: Optional[int] = None, mime_type: str = "image/jpeg") -> dict:
         """
         Analyze a currency image for authenticity using Gemini Vision.
 
@@ -323,19 +329,19 @@ class GeminiService:
         """
         if self._available:
             try:
-                return await self._gemini_currency_analysis(image_bytes, denomination)
+                return await self._gemini_currency_analysis(image_bytes, denomination, mime_type)
             except Exception as e:
                 logger.error("gemini_currency_analysis_failed", error=str(e), fallback=True)
 
         return self._fallback_currency_analysis(denomination)
 
-    async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int]) -> dict:
+    async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int], mime_type: str = "image/jpeg") -> dict:
         """Real Gemini Vision API call for currency analysis."""
         denom_hint = f"The user believes this is a Rs {denomination} note." if denomination else ""
         contents_text = f"Analyse this Indian currency note image. {denom_hint} Check all security features carefully."
 
         # Convert bytes to Part for google-genai
-        image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
+        image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
 
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
@@ -354,7 +360,7 @@ class GeminiService:
     def _fallback_currency_analysis(self, denomination: Optional[int] = None) -> dict:
         """Fallback currency analysis when Gemini is unavailable."""
         return {
-            "verdict": "SUSPICIOUS",
+            "verdict": "UNCLEAR_IMAGE",
             "confidence": 0.5,
             "failed_features": ["automated_analysis_unavailable"],
             "analysis": (
@@ -426,12 +432,14 @@ class GeminiService:
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=CITIZEN_SHIELD_SYSTEM_PROMPT,
-                response_mime_type="application/json",
                 temperature=0.7,
             ),
         )
 
-        return json.loads(response.text)
+        try:
+            return json.loads(response.text)
+        except (json.JSONDecodeError, TypeError):
+            return {"response": response.text.strip() if response.text else "", "risk_assessment": None}
 
     def _fallback_chat(self, message: str) -> dict:
         """Template-based fallback chat responses."""

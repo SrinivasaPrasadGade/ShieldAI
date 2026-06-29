@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/geo", tags=["Geospatial Intelligence"])
 
 @router.get("/incidents", response_model=GeoIncidentsResponse)
 async def get_incidents(
-    type: Optional[str] = Query(None, description="Filter by type: scam_call, ficn, financial_fraud"),
+    incident_type: Optional[str] = Query(None, alias="type", description="Filter by type: scam_call, ficn, financial_fraud"),
     days: int = Query(7, ge=1, le=365, description="Days to look back"),
     state: Optional[str] = Query(None, description="Filter by state"),
 ):
@@ -36,18 +36,18 @@ async def get_incidents(
     Get geospatial incidents filtered by type, time window, and state.
     Returns up to 500 incidents ordered by creation time (newest first).
     """
-    if type and type not in ("scam_call", "ficn", "financial_fraud"):
+    if incident_type and incident_type not in ("scam_call", "ficn", "financial_fraud"):
         from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="Type must be scam_call, ficn, or financial_fraud")
 
     service = get_geo_service()
-    incidents = service.get_incidents(incident_type=type, days=days, state=state)
+    incidents = service.get_incidents(incident_type=incident_type, days=days, state=state)
     return {"incidents": incidents}
 
 
 @router.get("/heatmap", response_model=HeatmapResponse)
 async def get_heatmap(
-    type: Optional[str] = Query(None, description="Filter by incident type"),
+    incident_type: Optional[str] = Query(None, alias="type", description="Filter by incident type"),
 ):
     """
     Get heatmap data points for Leaflet.heat visualization.
@@ -56,7 +56,7 @@ async def get_heatmap(
     Weight represents incident count at each location.
     """
     service = get_geo_service()
-    points = service.get_heatmap(incident_type=type)
+    points = service.get_heatmap(incident_type=incident_type)
     return {"points": points}
 
 

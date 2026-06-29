@@ -1,8 +1,7 @@
-import os
 from celery import Celery
+from config import settings
 
-# Default to localhost if running outside docker, else use the environment variable
-redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+redis_url = settings.REDIS_URL
 
 app = Celery(
     "shield_ai",

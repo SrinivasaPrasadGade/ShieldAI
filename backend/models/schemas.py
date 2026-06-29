@@ -324,7 +324,7 @@ class GraphQueryRequest(BaseModel):
 
     @model_validator(mode="after")
     def at_least_one_required(self):
-        if not self.phone_number and not self.account_number:
+        if self.phone_number is None and self.account_number is None:
             raise ValueError("At least one of phone_number or account_number must be provided")
         return self
 
@@ -445,7 +445,9 @@ class CitizenReportRequest(BaseModel):
     def validate_email(cls, v):
         if v is not None and v.strip():
             v = v.strip()
-            if "@" not in v or "." not in v.split("@")[-1]:
+            import re
+            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, v):
                 raise ValueError("Invalid email format")
         return v
 
@@ -483,7 +485,7 @@ class PhoneRiskRequest(BaseModel):
         
         if not cleaned.isdigit() or len(cleaned) < 10:
             raise ValueError("Invalid phone number format. Expected Indian phone number (10+ digits)")
-        return v
+        return cleaned
 
 
 class PhoneRiskResponse(BaseModel):

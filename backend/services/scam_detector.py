@@ -7,8 +7,9 @@ via Gemini's native audio capabilities.
 """
 
 import uuid
+import asyncio
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 
 from logging_config import get_logger
 from services.gemini_service import get_gemini_service
@@ -16,7 +17,11 @@ from services.gemini_service import get_gemini_service
 logger = get_logger("shield_ai.scam_detector")
 
 # We defer the import of transformers to avoid hanging the API on startup when BERT is disabled.
-TRANSFORMERS_AVAILABLE = True
+try:
+    import transformers
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
 
 
 # Scam classification candidate labels for zero-shot
@@ -118,7 +123,7 @@ class ScamDetector:
         gemini_score = gemini_result.get("risk_score", 0.0)
 
         # 2. BERT zero-shot classification (secondary signal)
-        bert_result = self.bert_classify(text)
+        bert_result = await asyncio.to_thread(self.bert_classify, text) if self._bert_pipeline else None
         bert_score = 0.0
 
         if bert_result:

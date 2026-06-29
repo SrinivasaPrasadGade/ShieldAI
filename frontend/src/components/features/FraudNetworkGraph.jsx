@@ -53,8 +53,6 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
           nodes: positionedNodes,
           edges: res.edges || []
         });
-      } catch (err) {
-        console.error('Error fetching network graph:', err);
       } finally {
         setLoading(false);
       }
@@ -71,7 +69,6 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
       const details = await api.getNodeDetails(node.id);
       setNodeDetails(details);
     } catch (err) {
-      console.error('Error fetching node details:', err);
       // Fallback local details mock
       setNodeDetails({
         entity: node,
@@ -95,8 +92,8 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
 
   const getEntityIcon = (type, isCentral) => {
     if (isCentral) return <Award size={14} color="var(--accent-orange)" />;
-    if (type === 'phone' || type === 'phone') return <Phone size={14} color="var(--accent-red)" />;
-    if (type === 'account' || type === 'account') return <CreditCard size={14} color="var(--accent-purple)" />;
+    if (type === 'phone') return <Phone size={14} color="var(--accent-red)" />;
+    if (type === 'account') return <CreditCard size={14} color="var(--accent-purple)" />;
     return <UserCheck size={14} color="var(--accent-green)" />;
   };
 

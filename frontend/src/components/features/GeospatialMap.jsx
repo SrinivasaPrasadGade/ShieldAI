@@ -51,7 +51,6 @@ export const GeospatialMap = ({ activeAlert = null }) => {
 
         setIncidents(normalizedIncidents.filter((incident) => Number.isFinite(incident.lat) && Number.isFinite(incident.lng)));
       } catch (err) {
-        console.error('Error fetching geo incidents:', err);
         setIncidents([]);
       } finally {
         setLoading(false);
@@ -83,9 +82,21 @@ export const GeospatialMap = ({ activeAlert = null }) => {
 
       {/* Leaflet Map */}
       <div style={{ flex: 1, borderRadius: '12px', border: '1px solid var(--border-glass)', overflow: 'hidden', position: 'relative' }}>
+        {loading && (
+          <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', fontSize: '0.75rem' }}>
+            Loading incident map...
+          </div>
+        )}
+
+        {!loading && incidents.length === 0 && (
+          <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+            No incidents found for the selected view.
+          </div>
+        )}
+
         <MapContainer 
           center={[22.5937, 78.9629]} 
-          zoom={4.5} 
+          zoom={5} 
           style={{ width: '100%', height: '100%', background: '#070a12', zIndex: 1 }}
           zoomControl={true}
         >
@@ -94,18 +105,6 @@ export const GeospatialMap = ({ activeAlert = null }) => {
             attribution='&copy; CARTO'
           />
           <MapController activeAlert={activeAlert} />
-
-          {loading && (
-            <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-primary)', fontSize: '0.75rem' }}>
-              Loading incident map...
-            </div>
-          )}
-
-          {!loading && incidents.length === 0 && (
-            <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-              No incidents found for the selected view.
-            </div>
-          )}
 
           {incidents.map((inc) => {
             const isCritical = inc.severity === 'CRITICAL';

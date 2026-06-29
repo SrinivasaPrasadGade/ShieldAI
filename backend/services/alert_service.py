@@ -5,12 +5,22 @@ Manages alerts in Firestore — creation, retrieval, and status updates.
 """
 
 import uuid
+import json
+import redis
 from datetime import datetime, timezone
 from typing import Optional
 
 from logging_config import get_logger
 
 logger = get_logger("shield_ai.alerts")
+
+_redis_pool = None
+def _get_redis():
+    global _redis_pool
+    from config import settings
+    if _redis_pool is None:
+        _redis_pool = redis.ConnectionPool.from_url(settings.REDIS_URL)
+    return redis.Redis(connection_pool=_redis_pool)
 
 
 class AlertService:
@@ -51,10 +61,6 @@ class AlertService:
         Returns:
             Generated alert ID
         """
-        import os
-        import json
-        import redis
-
         alert_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
@@ -89,12 +95,11 @@ class AlertService:
             redis_alert = alert_data.copy()
             redis_alert["created_at"] = now.isoformat()
             
-            redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-            r = redis.Redis.from_url(redis_url)
+            r = _get_redis()
             r.publish("new_alerts", json.dumps(redis_alert))
             logger.info("alert_published_to_redis", alert_id=alert_id)
-        except Exception as re:
-            logger.error("redis_publish_failed", error=str(re))
+        except Exception as redis_err:
+            logger.error("redis_publish_failed", error=str(redis_err))
 
         return alert_id
 
@@ -194,8 +199,10 @@ class AlertService:
                 })
 
             # Get total count
-            total_docs = list(alerts_ref.stream())
-            total = len(total_docs)
+            from services.firestore_utils import count_query
+            total = count_query(alerts_ref)
+            if total is None:
+                total = len(alerts)
 
             return {"alerts": alerts, "total": total}
 
@@ -214,6 +221,9 @@ class AlertService:
             True if updated, False if not found
         """
         try:
+            if self.db is None:
+                logger.warning("firestore_offline_cannot_mark_read", alert_id=alert_id)
+                return False
             doc_ref = self.db.collection("alerts").document(alert_id)
             doc = doc_ref.get()
             if doc.exists:

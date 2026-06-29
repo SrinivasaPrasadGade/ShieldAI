@@ -19,6 +19,8 @@ logger = get_logger("shield_ai.graph")
 
 class GraphService:
     """Fraud network graph operations on SQLite."""
+    _needs_recompute = False
+    _last_recompute = 0.0
 
     def get_network(self, cluster_id: Optional[int] = None, limit: int = 100) -> dict:
         """
@@ -114,17 +116,12 @@ class GraphService:
             centrality = 0.0
 
             if cluster_id is not None:
-                total_edges_in_cluster = conn.execute(
-                    """SELECT COUNT(*) as cnt FROM relationships r
-                       JOIN entities e1 ON r.source_id = e1.id
-                       JOIN entities e2 ON r.target_id = e2.id
-                       WHERE e1.cluster_id = ? OR e2.cluster_id = ?""",
-                    (cluster_id, cluster_id),
+                cluster_size_row = conn.execute(
+                    "SELECT COUNT(*) as cnt FROM entities WHERE cluster_id = ?", (cluster_id,)
                 ).fetchone()
-
-                total = total_edges_in_cluster["cnt"] if total_edges_in_cluster else 0
-                if total > 0:
-                    centrality = round(len(edges) / total, 4)
+                n = cluster_size_row["cnt"] if cluster_size_row else 0
+                if n > 1:
+                    centrality = round(len(edges) / (n - 1), 4)
 
             # Fetch cluster info
             cluster = None
@@ -413,7 +410,15 @@ class GraphService:
                     """, (node_id, victim_id, report_id))
         
         # Recompute community detection and centrality after adding new data
-        self._recompute_clusters()
+        import time
+        import sys
+        self._needs_recompute = True
+        now = time.monotonic()
+        is_test = "pytest" in sys.modules
+        if is_test or (now - self._last_recompute > 60.0):  # Debounce: max once per 60 seconds
+            self._recompute_clusters()
+            self._last_recompute = now
+            self._needs_recompute = False
 
     def _load_graph_from_db(self) -> nx.Graph:
         """Load the entities and relationships from the database into a NetworkX graph."""

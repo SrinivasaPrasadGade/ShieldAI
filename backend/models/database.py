@@ -2,19 +2,9 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-
-# Locate the root of the project
-_current_file = Path(__file__).resolve()
-_project_root = _current_file.parents[2]
-_env_path = _project_root / ".env"
-if _env_path.exists():
-    load_dotenv(dotenv_path=_env_path)
-else:
-    load_dotenv()
 
 # ==========================================
 # SQLITE CONNECTION & SCHEMA DEFINITIONS
@@ -87,12 +77,14 @@ def get_sqlite_connection():
         
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row  # return dict-like rows
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     try:
         yield conn
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise e
+        raise
     finally:
         conn.close()
 
@@ -105,7 +97,8 @@ def init_sqlite_db():
 # FIRESTORE CLIENT INITIALIZATION
 # ==========================================
 
-_firestore_client = None
+_NOT_INITIALIZED = object()
+_firestore_client = _NOT_INITIALIZED
 
 def get_firestore_client():
     """
@@ -114,7 +107,7 @@ def get_firestore_client():
     then falls back to Application Default Credentials (ADC).
     """
     global _firestore_client
-    if _firestore_client is None:
+    if _firestore_client is _NOT_INITIALIZED:
         from config import settings
         cred_path = settings.firebase_credentials_abs_path
         

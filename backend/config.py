@@ -5,7 +5,6 @@ All environment variables are loaded via pydantic-settings BaseSettings,
 providing typed, validated settings with sensible defaults.
 """
 
-import os
 from typing import List
 from pathlib import Path
 from pydantic_settings import BaseSettings
@@ -96,6 +95,9 @@ class Settings(BaseSettings):
     # ── Rate Limiting ────────────────────────────────────────────
     RATE_LIMIT_REQUESTS: int = 60  # requests per window
     RATE_LIMIT_WINDOW_SECONDS: int = 60  # window duration
+
+    # ── Redis ────────────────────────────────────────────────
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     model_config = {
         "env_file": (PROJECT_ROOT / ".env", BASE_DIR / ".env", ".env"),

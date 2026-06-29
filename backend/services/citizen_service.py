@@ -6,6 +6,7 @@ and tracking in Firestore.
 """
 
 import uuid
+import threading
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -22,6 +23,7 @@ class CitizenService:
         self.gemini = get_gemini_service()
         self._db = None
         self._report_counter = 0
+        self._counter_lock = threading.Lock()
 
     @property
     def db(self):
@@ -91,8 +93,9 @@ class CitizenService:
         now = datetime.now(timezone.utc)
 
         # Generate reference number: SAI-YYYY-XXXXXX
-        self._report_counter += 1
-        reference_number = f"SAI-{now.year}-{str(self._report_counter).zfill(6)}"
+        with self._counter_lock:
+            self._report_counter += 1
+            reference_number = f"SAI-{now.year}-{str(self._report_counter).zfill(6)}"
 
         report_data = {
             "id": report_id,
@@ -130,8 +133,11 @@ class CitizenService:
                 logger.warning("firestore_offline_report_not_saved", report_id=report_id)
 
             # Dispatch Celery task for async report analysis & geocoding
-            from tasks.scam_tasks import process_citizen_report_task
-            process_citizen_report_task.delay(report_id)
+            try:
+                from tasks.scam_tasks import process_citizen_report_task
+                process_citizen_report_task.delay(report_id)
+            except Exception as celery_err:
+                logger.error("celery_dispatch_failed", error=str(celery_err), report_id=report_id)
 
             # Smart Upgrade: Add report to fraud network graph in SQLite
             try:

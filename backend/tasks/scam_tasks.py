@@ -46,7 +46,14 @@ INDIAN_CITIES = {
 def geocode_location(city_name: str) -> dict:
     """Helper to offline-geocode one of the 30 major Indian cities."""
     if not city_name:
-        city_name = random.choice(list(INDIAN_CITIES.keys()))
+        return {
+            "city": "Unknown",
+            "state": "Unknown",
+            "pincode": "000000",
+            "lat": 20.5937,  # India centroid
+            "lng": 78.9629,
+            "geocoded": False
+        }
         
     # Case-insensitive lookup
     for city, data in INDIAN_CITIES.items():
@@ -56,18 +63,18 @@ def geocode_location(city_name: str) -> dict:
                 "state": data["state"],
                 "pincode": data["pincode"],
                 "lat": data["lat"] + random.uniform(-0.05, 0.05), # add slight scatter
-                "lng": data["lng"] + random.uniform(-0.05, 0.05)
+                "lng": data["lng"] + random.uniform(-0.05, 0.05),
+                "geocoded": True
             }
             
-    # Default to a random city
-    random_city = random.choice(list(INDIAN_CITIES.keys()))
-    data = INDIAN_CITIES[random_city]
+    # City not found — return unknown marker instead of random city
     return {
-        "city": random_city,
-        "state": data["state"],
-        "pincode": data["pincode"],
-        "lat": data["lat"] + random.uniform(-0.05, 0.05),
-        "lng": data["lng"] + random.uniform(-0.05, 0.05)
+        "city": city_name,
+        "state": "Unknown",
+        "pincode": "000000",
+        "lat": 20.5937,
+        "lng": 78.9629,
+        "geocoded": False
     }
 
 @app.task(name="tasks.scam_tasks.process_citizen_report_task")
