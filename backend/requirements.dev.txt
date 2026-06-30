@@ -1,0 +1,7 @@
+-r requirements.base.txt
+-r requirements.api.txt
+-r requirements.worker.txt
+-r requirements.realtime.txt
+pytest>=7.0.0
+pytest-asyncio
+httpx>=0.24.0

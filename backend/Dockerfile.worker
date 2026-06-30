@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements and install (worker has heavy ML deps)
 COPY backend/requirements.base.txt .
 COPY backend/requirements.worker.txt .
-RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.worker.txt
+RUN pip install --upgrade pip setuptools wheel && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.worker.txt
 
 # Copy the rest of the application
 COPY backend/ backend/

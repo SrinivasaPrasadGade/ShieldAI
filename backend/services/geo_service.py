@@ -89,11 +89,11 @@ class GeoService:
         Returns:
             List of {lat, lng, weight} dicts
         """
-        query = \"\"\"
+        query = """
             SELECT ROUND(lat, 2) as grid_lat, ROUND(lng, 2) as grid_lng, COUNT(*) as weight
             FROM incidents
             WHERE 1=1
-        \"\"\"
+        """
         params: list = []
 
         if incident_type:
@@ -127,14 +127,14 @@ class GeoService:
         """
         with get_sqlite_connection() as conn:
             rows = conn.execute(
-                \"\"\"SELECT city, AVG(lat) as avg_lat, AVG(lng) as avg_lng,
+                """SELECT city, AVG(lat) as avg_lat, AVG(lng) as avg_lng,
                           COUNT(*) as incident_count,
                           MAX(lat) - MIN(lat) as lat_spread,
                           MAX(lng) - MIN(lng) as lng_spread
                    FROM incidents
                    GROUP BY city
                    HAVING incident_count >= ?
-                   ORDER BY incident_count DESC\"\"\",
+                   ORDER BY incident_count DESC""",
                 (threshold,),
             ).fetchall()
 
@@ -144,10 +144,10 @@ class GeoService:
 
                 # Get dominant type for this city
                 type_row = conn.execute(
-                    \"\"\"SELECT incident_type, COUNT(*) as cnt
+                    """SELECT incident_type, COUNT(*) as cnt
                        FROM incidents WHERE city = ?
                        GROUP BY incident_type
-                       ORDER BY cnt DESC LIMIT 1\"\"\",
+                       ORDER BY cnt DESC LIMIT 1""",
                     (row_dict["city"],),
                 ).fetchone()
 
@@ -186,13 +186,13 @@ class GeoService:
         """
         with get_sqlite_connection() as conn:
             rows = conn.execute(
-                \"\"\"SELECT city,
+                """SELECT city,
                           AVG(lat) as lat, AVG(lng) as lng,
                           COUNT(*) as total_incidents,
                           SUM(CASE WHEN severity IN ('HIGH', 'CRITICAL') THEN 1 ELSE 0 END) as high_risk_count
                    FROM incidents
                    GROUP BY city
-                   ORDER BY total_incidents DESC\"\"\"
+                   ORDER BY total_incidents DESC"""
             ).fetchall()
 
         cities = [

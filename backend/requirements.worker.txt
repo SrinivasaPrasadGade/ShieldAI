@@ -1,0 +1,10 @@
+-r requirements.base.txt
+celery
+transformers
+torch
+opencv-python-headless
+numpy
+google-genai
+tenacity
+networkx
+python-louvain

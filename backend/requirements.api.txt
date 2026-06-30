@@ -1,0 +1,12 @@
+-r requirements.base.txt
+fastapi
+uvicorn[standard]
+python-multipart
+aiofiles
+google-genai
+phonenumbers
+twilio
+networkx
+python-louvain
+celery
+tenacity

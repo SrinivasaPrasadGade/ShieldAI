@@ -1,0 +1,5 @@
+-r requirements.base.txt
+flask
+flask-socketio
+flask-cors
+eventlet
