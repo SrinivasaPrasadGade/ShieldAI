@@ -19,6 +19,7 @@ from middleware import (
     RequestIDMiddleware,
     RequestLoggingMiddleware,
     RateLimitMiddleware,
+    AuthMiddleware,
     global_exception_handler,
 )
 
@@ -115,6 +116,13 @@ app.add_middleware(RequestLoggingMiddleware)
 
 # Request ID injection
 app.add_middleware(RequestIDMiddleware)
+
+# Authentication for Law Enforcement routes
+app.add_middleware(
+    AuthMiddleware,
+    protected_prefixes=("/api/graph", "/api/geo"),
+    api_key=getattr(settings, "API_KEY", "demo-valid-token")
+)
 
 # CORS
 app.add_middleware(

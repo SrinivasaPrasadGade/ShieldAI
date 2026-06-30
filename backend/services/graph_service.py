@@ -409,16 +409,17 @@ class GraphService:
                         VALUES (?, ?, 'transacted_with', 1.0, ?)
                     """, (node_id, victim_id, report_id))
         
-        # Recompute community detection and centrality after adding new data
-        import time
+        # Dispatch Celery task to recompute community detection asynchronously
         import sys
-        self._needs_recompute = True
-        now = time.monotonic()
         is_test = "pytest" in sys.modules
-        if is_test or (now - self._last_recompute > 60.0):  # Debounce: max once per 60 seconds
+        if is_test:
             self._recompute_clusters()
-            self._last_recompute = now
-            self._needs_recompute = False
+        else:
+            try:
+                from tasks.graph_tasks import recompute_graph_clusters_task
+                recompute_graph_clusters_task.delay()
+            except Exception as e:
+                logger.error("dispatch_graph_recompute_failed", error=str(e))
 
     def _load_graph_from_db(self) -> nx.Graph:
         """Load the entities and relationships from the database into a NetworkX graph."""
@@ -444,8 +445,19 @@ class GraphService:
                 logger.info("graph_too_small_skipping_clustering", node_count=len(G.nodes))
                 return
             
-            # 1. Louvain Community Detection (requires undirected graph)
-            partition = community_louvain.best_partition(G)
+            # 1. Louvain Community Detection (robust against disconnected components)
+            partition = {}
+            for component in nx.connected_components(G):
+                subgraph = G.subgraph(component)
+                if len(subgraph) < 3:
+                    c_id = abs(hash(min(subgraph.nodes()))) % 1000000000
+                    for n in subgraph.nodes():
+                        partition[n] = c_id
+                else:
+                    sub_partition = community_louvain.best_partition(subgraph)
+                    base = abs(hash(min(subgraph.nodes()))) % 1000000000
+                    for n, c_id in sub_partition.items():
+                        partition[n] = base + c_id
             
             # 2. Degree and betweenness centrality to identify mastermind/mule nodes
             centrality = nx.betweenness_centrality(G)

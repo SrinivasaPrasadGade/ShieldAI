@@ -127,30 +127,43 @@ async def whatsapp_webhook(request: Request):
             else:
                 response_text = "Usage: check [phone number]\nExample: check 9876543210"
         else:
-            # Scam text analysis
-            try:
-                from services.scam_detector import get_scam_detector
-                detector = get_scam_detector()
-                result = await detector.analyze_text(
-                    text=incoming_msg,
-                    source_phone=from_number,
-                    language="en",
-                )
-
-                emoji = "🔴" if result["risk_label"] == "HIGH" else "🟡" if result["risk_label"] == "MEDIUM" else "🟢"
-                response_text = (
-                    f"{emoji} *Scam Analysis Result*\n\n"
-                    f"Risk Level: *{result['risk_label']}* ({result['risk_score']:.0%})\n"
-                    f"Type: {result.get('scam_type', 'N/A')}\n\n"
-                    f"📋 {result['explanation']}\n\n"
-                    f"✅ *Action:* {result['recommended_action']}"
-                )
-            except Exception as e:
-                logger.error("whatsapp_analysis_failed", error=str(e))
-                response_text = (
-                    "I couldn't analyze that message right now. "
-                    "If you're in danger, call 112 or the cybercrime helpline at 1930 immediately."
-                )
+            # Handle media
+            num_media = int(form_data.get("NumMedia", "0"))
+            if num_media > 0:
+                media_type = form_data.get("MediaContentType0", "")
+                if media_type.startswith("audio/"):
+                    response_text = "Audio analysis via WhatsApp is coming soon. For now, please type out your issue."
+                elif media_type.startswith("image/"):
+                    response_text = "Image analysis (like for counterfeit currency) via WhatsApp is coming soon."
+                else:
+                    response_text = "We currently cannot process this type of media. Please describe your issue in text."
+            else:
+                # Route through CitizenService chat to maintain context and rate limits
+                try:
+                    from services.citizen_service import get_citizen_service
+                    citizen_svc = get_citizen_service()
+                    
+                    ip = request.client.host if request.client else "unknown"
+                    result = await citizen_svc.chat(
+                        message=incoming_msg,
+                        session_id=f"wa_{from_number}",
+                        language="en",
+                        ip=ip
+                    )
+                    
+                    response_text = result.get("response", "I'm sorry, I couldn't process that.")
+                    
+                    # Optionally append risk warning if HIGH
+                    risk = result.get("risk_assessment")
+                    if risk and risk.get("risk_level") == "HIGH":
+                        response_text += "\n\n🚨 WARNING: High risk of scam detected! Do NOT send money. Call 1930."
+                        
+                except Exception as e:
+                    logger.error("whatsapp_citizen_chat_failed", error=str(e))
+                    response_text = (
+                        "I couldn't process your message right now. "
+                        "If you're in danger, call 112 or the cybercrime helpline at 1930 immediately."
+                    )
 
         # Return TwiML response
         twiml = (

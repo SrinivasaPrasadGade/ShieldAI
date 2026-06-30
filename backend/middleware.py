@@ -127,8 +127,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
+class AuthMiddleware(BaseHTTPMiddleware):
+    """
+    Basic authentication for law-enforcement endpoints to prevent exposure.
+    Expects Authorization: Bearer <token> or X-API-Key: <token>
+    """
+    def __init__(self, app: FastAPI, protected_prefixes: tuple = (), api_key: str = "demo-valid-token"):
+        super().__init__(app)
+        self.protected_prefixes = protected_prefixes
+        self.api_key = api_key
 
-
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if any(request.url.path.startswith(prefix) for prefix in self.protected_prefixes):
+            auth_header = request.headers.get("Authorization", "")
+            api_key_header = request.headers.get("X-API-Key", "")
+            
+            valid = False
+            if auth_header.startswith("Bearer ") and auth_header.split(" ")[1] == self.api_key:
+                valid = True
+            elif api_key_header == self.api_key:
+                valid = True
+                
+            if not valid:
+                logger.warning("unauthorized_access_attempt", path=request.url.path, client_ip=request.client.host if request.client else "unknown")
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "unauthorized", "message": "Valid API Key required for law-enforcement routes."}
+                )
+                
+        return await call_next(request)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Catches unhandled exceptions. Returns structured JSON error.

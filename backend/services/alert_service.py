@@ -80,7 +80,15 @@ class AlertService:
         # 1. Store in Firestore (if available)
         try:
             if self.db is not None:
-                self.db.collection("alerts").document(alert_id).set(alert_data)
+                from google.cloud import firestore
+                batch = self.db.batch()
+                alert_ref = self.db.collection("alerts").document(alert_id)
+                batch.set(alert_ref, alert_data)
+                
+                stats_ref = self.db.collection("system_stats").document("global_counts")
+                batch.set(stats_ref, {"total_alerts": firestore.Increment(1)}, merge=True)
+                
+                batch.commit()
                 logger.info("alert_created", alert_id=alert_id, type=alert_type, severity=severity)
             else:
                 logger.warning("firestore_offline_alert_not_saved", alert_id=alert_id)
@@ -97,6 +105,13 @@ class AlertService:
             
             r = _get_redis()
             r.publish("new_alerts", json.dumps(redis_alert))
+            
+            # Store in Redis with TTL for fallback (24 hours)
+            alert_key = f"alert:{alert_id}"
+            r.setex(alert_key, 86400, json.dumps(redis_alert))
+            r.lpush("recent_alerts_list", alert_key)
+            r.ltrim("recent_alerts_list", 0, 99)  # Keep latest 100
+            
             logger.info("alert_published_to_redis", alert_id=alert_id)
         except Exception as redis_err:
             logger.error("redis_publish_failed", error=str(redis_err))
@@ -116,7 +131,23 @@ class AlertService:
         """
         try:
             if self.db is None:
-                # Return high-fidelity local mock alerts for offline dashboard demo
+                # Try Redis fallback first
+                try:
+                    r = _get_redis()
+                    keys = r.lrange("recent_alerts_list", 0, limit - 1)
+                    fallback_alerts = []
+                    for k in keys:
+                        data_bytes = r.get(k)
+                        if data_bytes:
+                            fallback_alerts.append(json.loads(data_bytes))
+                    if fallback_alerts:
+                        if severity:
+                            fallback_alerts = [a for a in fallback_alerts if a.get("severity") == severity]
+                        return {"alerts": fallback_alerts[:limit], "total": len(fallback_alerts)}
+                except Exception as redis_err:
+                    logger.warning("redis_fallback_failed", error=str(redis_err))
+
+                # If Redis fails or empty, return high-fidelity local mock alerts for offline dashboard demo
                 now_str = datetime.now(timezone.utc).isoformat()
                 mock_alerts = [
                     {
@@ -198,11 +229,15 @@ class AlertService:
                     "created_at": str(data.get("created_at", "")),
                 })
 
-            # Get total count
-            from services.firestore_utils import count_query
-            total = count_query(alerts_ref)
-            if total is None:
-                total = len(alerts)
+            # Get total count from stats document instead of slow count()
+            total = len(alerts)
+            try:
+                stats_doc = self.db.collection("system_stats").document("global_counts").get()
+                if stats_doc.exists:
+                    stats_data = stats_doc.to_dict()
+                    total = stats_data.get("total_alerts", total)
+            except Exception as stats_err:
+                logger.warning("firestore_stats_read_failed", error=str(stats_err))
 
             return {"alerts": alerts, "total": total}
 

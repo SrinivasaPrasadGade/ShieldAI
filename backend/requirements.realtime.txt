@@ -1,8 +1,0 @@
-# ── ShieldAI Realtime Server Dependencies ───────────────────
--r requirements.base.txt
-
-# Flask-SocketIO stack
-flask>=3.0.0
-flask-socketio>=5.3.0
-flask-cors>=4.0.0
-eventlet>=0.33.3

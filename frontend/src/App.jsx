@@ -38,9 +38,10 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('citizen');
   const [activeAlert, setActiveAlert] = useState(null);
   const [showToast, setShowToast] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [toastData, setToastData] = useState(null);
 
   const { feed, connected, latestToast } = useSocket('law_enforcement');
@@ -66,6 +67,7 @@ function App() {
   };
 
   const handleToastClick = () => {
+    if (!isAuthenticated) return; // Prevent unauthorized access
     setActiveView('dashboard');
     if (toastData) {
       setActiveAlert(toastData);
@@ -73,12 +75,28 @@ function App() {
     setShowToast(false);
   };
 
+  const handleViewChange = (view) => {
+    if (view === 'dashboard' && !isAuthenticated) {
+      // Token check before client-side routing
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert("Unauthorized: Law enforcement dashboard requires valid credentials.");
+        // For demo purposes, we will mock authentication
+        localStorage.setItem('auth_token', 'demo-valid-token');
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(true);
+      }
+    }
+    setActiveView(view);
+  };
+
   return (
     <ErrorBoundary>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         <TopBar 
           activeView={activeView} 
-          onViewChange={setActiveView} 
+          onViewChange={handleViewChange} 
           isRealtimeConnected={connected} 
         />
 

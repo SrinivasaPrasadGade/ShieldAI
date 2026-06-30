@@ -179,6 +179,22 @@ class EvidenceService:
                 logger.error("evidence_synthesis_failed", error=str(e))
                 evidence["gemini_synthesis"] = "Failed to generate AI synthesis report."
 
+            # 5.6 Add Chain of Custody and Digital Signature
+            evidence["chain_of_custody"] = {
+                "generated_by": "ShieldAI System",
+                "timestamp": now,
+                "version": "1.0",
+                "hash_algorithm": "SHA-256",
+            }
+            
+            import json, hashlib, hmac
+            from config import settings
+            evidence_str = json.dumps(evidence, sort_keys=True)
+            secret = getattr(settings, 'SECRET_KEY', 'default-secret-key-for-dev').encode('utf-8')
+            signature = hmac.new(secret, evidence_str.encode('utf-8'), hashlib.sha256).hexdigest()
+            
+            evidence["digital_signature"] = signature
+
             # 6. Store result
             task_store.update_task(task_id, status="complete", result=evidence)
 

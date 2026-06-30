@@ -22,8 +22,6 @@ class CitizenService:
     def __init__(self):
         self.gemini = get_gemini_service()
         self._db = None
-        self._report_counter = 0
-        self._counter_lock = threading.Lock()
 
     @property
     def db(self):
@@ -32,7 +30,7 @@ class CitizenService:
             self._db = get_firestore_client()
         return self._db
 
-    async def chat(self, message: str, session_id: str, language: str = "en") -> dict:
+    async def chat(self, message: str, session_id: str, language: str = "en", ip: str = "unknown") -> dict:
         """
         Process a citizen chatbot message.
 
@@ -40,15 +38,65 @@ class CitizenService:
             message: User's message
             session_id: Session ID for conversation continuity
             language: Language preference
+            ip: Client IP address for rate limiting
 
         Returns:
             dict matching CitizenChatResponse schema
         """
+        import redis
+        import json
+        from config import settings
+        
+        try:
+            r = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+            
+            # Rate limiting: Max 10 messages per minute per IP
+            rate_key = f"rate_limit:chat:{ip}"
+            count = r.incr(rate_key)
+            if count == 1:
+                r.expire(rate_key, 60)
+            if count > 10:
+                logger.warning("chat_rate_limit_exceeded", ip=ip, session_id=session_id)
+                return {
+                    "response": "You are sending messages too quickly. Please wait a moment.",
+                    "risk_assessment": None,
+                    "report_link": None,
+                    "session_id": session_id,
+                }
+
+            # Retrieve chat history
+            history_key = f"chat_history:{session_id}"
+            history_items = r.lrange(history_key, 0, -1)
+            
+            context = ""
+            if history_items:
+                context = "Previous interaction in this session:\n"
+                for item in history_items[-10:]:  # Keep last 10 messages
+                    msg = json.loads(item)
+                    context += f"{msg['role']}: {msg['text']}\n"
+                context += "\n"
+        except Exception as e:
+            logger.error("redis_chat_history_failed", error=str(e))
+            r = None
+            context = ""
+
+        # Build prompt
+        full_message = f"{context}User: {message}"
+
         # 1. Get Gemini chat response
-        gemini_result = await self.gemini.chat_response(message, session_id, language)
+        gemini_result = await self.gemini.chat_response(full_message, session_id, language)
 
         response_text = gemini_result.get("response", "I'm here to help with fraud-related concerns.")
         risk_assessment = gemini_result.get("risk_assessment")
+
+        # Save to history
+        if r:
+            try:
+                r.rpush(history_key, json.dumps({"role": "User", "text": message}))
+                r.rpush(history_key, json.dumps({"role": "Assistant", "text": response_text}))
+                r.expire(history_key, 86400)  # 24 hours TTL
+            except Exception as e:
+                logger.error("redis_chat_history_save_failed", error=str(e))
 
         # 2. Generate report link if risk detected
         report_link = None
@@ -91,11 +139,18 @@ class CitizenService:
         """
         report_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+        current_year = now.year
 
-        # Generate reference number: SAI-YYYY-XXXXXX
-        with self._counter_lock:
-            self._report_counter += 1
-            reference_number = f"SAI-{now.year}-{str(self._report_counter).zfill(6)}"
+        # Generate reference number: SAI-YYYY-XXXXXX using DB sequence
+        from models.database import get_sqlite_connection
+        with get_sqlite_connection() as conn:
+            conn.execute("INSERT OR IGNORE INTO reference_sequences (year, counter) VALUES (?, 0)", (current_year,))
+            conn.execute("UPDATE reference_sequences SET counter = counter + 1 WHERE year = ?", (current_year,))
+            cursor = conn.execute("SELECT counter FROM reference_sequences WHERE year = ?", (current_year,))
+            row = cursor.fetchone()
+            new_counter = row['counter']
+            
+        reference_number = f"SAI-{current_year}-{str(new_counter).zfill(6)}"
 
         report_data = {
             "id": report_id,
@@ -127,10 +182,24 @@ class CitizenService:
 
         try:
             if self.db is not None:
-                self.db.collection("fraud_reports").document(report_id).set(report_data)
+                from google.cloud import firestore
+                batch = self.db.batch()
+                report_ref = self.db.collection("fraud_reports").document(report_id)
+                batch.set(report_ref, report_data)
+                
+                stats_ref = self.db.collection("system_stats").document("global_counts")
+                batch.set(stats_ref, {"total_reports": firestore.Increment(1)}, merge=True)
+                
+                batch.commit()
                 logger.info("citizen_report_created", report_id=report_id, reference=reference_number)
             else:
-                logger.warning("firestore_offline_report_not_saved", report_id=report_id)
+                logger.warning("firestore_offline_report_saved_locally", report_id=report_id)
+                import json
+                with get_sqlite_connection() as conn:
+                    conn.execute(
+                        "INSERT INTO offline_reports (id, payload) VALUES (?, ?)", 
+                        (report_id, json.dumps(report_data, default=str))
+                    )
 
             # Dispatch Celery task for async report analysis & geocoding
             try:
@@ -184,6 +253,18 @@ class CitizenService:
         """
         try:
             if self.db is None:
+                from models.database import get_sqlite_connection
+                import json
+                with get_sqlite_connection() as conn:
+                    cursor = conn.execute("SELECT payload FROM offline_reports WHERE id = ?", (report_id,))
+                    row = cursor.fetchone()
+                    if row:
+                        data = json.loads(row['payload'])
+                        return {
+                            "status": data.get("status", "pending"),
+                            "updates": data.get("updates", ["Report submitted successfully (Offline Mode)"]),
+                            "created_at": str(data.get("created_at", "")),
+                        }
                 return {
                     "status": "pending",
                     "updates": ["Report submitted successfully (Offline Mode)"],

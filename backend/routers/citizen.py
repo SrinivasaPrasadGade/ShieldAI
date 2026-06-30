@@ -7,7 +7,7 @@ Endpoints:
   GET  /api/citizen/report/{report_id} — Check report status
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from models.schemas import (
     CitizenChatRequest,
@@ -25,18 +25,20 @@ router = APIRouter(prefix="/api/citizen", tags=["Citizen Shield"])
 
 
 @router.post("/chat", response_model=CitizenChatResponse)
-async def chat(request: CitizenChatRequest):
+async def chat(request: CitizenChatRequest, http_request: Request):
     """
     Interact with the Citizen Fraud Shield chatbot.
 
     Send a message and receive an AI-powered response with optional
     risk assessment. Supports session continuity via session_id.
     """
+    ip = http_request.client.host if http_request.client else "unknown"
     service = get_citizen_service()
     result = await service.chat(
         message=request.message,
         session_id=request.session_id,
         language=request.language,
+        ip=ip,
     )
     return result
 

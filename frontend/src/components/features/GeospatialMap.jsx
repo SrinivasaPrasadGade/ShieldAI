@@ -106,7 +106,7 @@ export const GeospatialMap = ({ activeAlert = null }) => {
           />
           <MapController activeAlert={activeAlert} />
 
-          {incidents.map((inc) => {
+          {Array.isArray(incidents) && incidents.map((inc) => {
             const isCritical = inc.severity === 'CRITICAL';
             const color = mapMode === 'heatmap'
               ? (isCritical ? '#ef4444' : inc.severity === 'HIGH' ? '#f97316' : '#eab308')

@@ -31,7 +31,12 @@ class PhoneRiskService:
             dict matching PhoneRiskResponse schema
         """
         # Normalize phone number for matching
-        cleaned = phone_number.strip().replace(" ", "").replace("-", "")
+        try:
+            import phonenumbers
+            parsed = phonenumbers.parse(phone_number, "IN")
+            cleaned = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            cleaned = phone_number.strip().replace(" ", "").replace("-", "")
 
         # 1. Check SQLite graph
         entity = None
@@ -83,10 +88,15 @@ class PhoneRiskService:
             logger.error("firestore_phone_check_failed", error=str(e))
 
         # 3. Compute composite risk
+        cluster_id = None
+        is_central = False
+        
         if entity:
             risk_score = entity.get("risk_score", 0.0)
             report_count = entity.get("report_count", 0) + report_count_firestore
-            in_network = entity.get("cluster_id") is not None
+            cluster_id = entity.get("cluster_id")
+            in_network = cluster_id is not None
+            is_central = bool(entity.get("is_central", False))
         else:
             # Not in graph — compute from Firestore reports alone
             risk_score = min(1.0, report_count_firestore * 0.2)  # Each report adds 0.2
@@ -108,6 +118,8 @@ class PhoneRiskService:
             "last_reported": last_reported,
             "fraud_types": fraud_types,
             "in_network": in_network,
+            "cluster_id": cluster_id,
+            "is_central": is_central,
         }
 
         logger.info(

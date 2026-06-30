@@ -38,7 +38,7 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     # ── Database & Storage ───────────────────────────────────────
-    SQLITE_DB_PATH: str = "backend/shield_ai.db"
+    SQLITE_DB_PATH: str = "backend/data/shield_ai.db"
     FIREBASE_CREDENTIALS_PATH: str = "backend/firebase-credentials.json"
     FIREBASE_STORAGE_BUCKET: str = "shieldai-hackathon.appspot.com"  # Replace with actual bucket name
 

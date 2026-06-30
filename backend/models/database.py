@@ -59,6 +59,25 @@ CREATE TABLE IF NOT EXISTS incidents (
     created_at  TEXT
 );
 
+CREATE TABLE IF NOT EXISTS reference_sequences (
+    year INTEGER PRIMARY KEY,
+    counter INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS offline_reports (
+    id TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    synced BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS currency_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    feature_name TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_incidents_lat_lng ON incidents(lat, lng);
 CREATE INDEX IF NOT EXISTS idx_entities_cluster ON entities(cluster_id);
 CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);

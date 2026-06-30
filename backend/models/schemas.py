@@ -475,17 +475,14 @@ class PhoneRiskRequest(BaseModel):
     @field_validator("phone_number")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        cleaned = v.strip().replace(" ", "").replace("-", "")
-        if cleaned.startswith("+91"):
-            cleaned = cleaned[3:]
-        elif cleaned.startswith("91") and len(cleaned) == 12:
-            cleaned = cleaned[2:]
-        elif cleaned.startswith("0"):
-            cleaned = cleaned[1:]
-        
-        if not cleaned.isdigit() or len(cleaned) < 10:
-            raise ValueError("Invalid phone number format. Expected Indian phone number (10+ digits)")
-        return cleaned
+        try:
+            import phonenumbers
+            parsed = phonenumbers.parse(v, "IN")
+            if not phonenumbers.is_valid_number(parsed):
+                raise ValueError("Invalid phone number")
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            raise ValueError("Invalid phone number format. Expected valid Indian phone number.")
 
 
 class PhoneRiskResponse(BaseModel):
@@ -496,6 +493,8 @@ class PhoneRiskResponse(BaseModel):
     last_reported: Optional[str] = None
     fraud_types: List[str] = Field(default_factory=list)
     in_network: bool
+    cluster_id: Optional[int] = None
+    is_central: bool = False
 
 
 # ── Common Error Response ────────────────────────────────────

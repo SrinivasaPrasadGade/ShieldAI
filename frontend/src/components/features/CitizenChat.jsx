@@ -45,7 +45,10 @@ export const CitizenChat = () => {
     e?.preventDefault();
     if (!message.trim() || loading) return;
 
-    const userText = message;
+    // Simple sanitization against basic XSS vectors
+    const sanitize = (str) => str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const userText = sanitize(message.trim());
+    
     setMessage('');
     setChatHistory((prev) => [...prev, { role: 'user', text: userText }]);
     setLoading(true);

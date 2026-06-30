@@ -250,6 +250,19 @@ class CurrencyAnalyzer:
             # 3. Determine if alert should be generated
             alert_generated = False
             verdict = result.get("verdict", "SUSPICIOUS")
+            failed_features = result.get("failed_features", [])
+
+            if failed_features:
+                try:
+                    from models.database import get_sqlite_connection
+                    with get_sqlite_connection() as conn:
+                        for feature in failed_features:
+                            conn.execute(
+                                "INSERT INTO currency_failures (task_id, feature_name) VALUES (?, ?)",
+                                (task_id, str(feature))
+                            )
+                except Exception as db_err:
+                    logger.error("currency_failure_db_insert_error", error=str(db_err))
 
             if verdict in ("COUNTERFEIT", "SUSPICIOUS"):
                 try:

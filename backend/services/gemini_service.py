@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+import asyncio
 from typing import Optional, Any
 
 from logging_config import get_logger
@@ -247,18 +248,36 @@ class GeminiService:
         return self._fallback_scam_analysis(text)
 
     async def _gemini_scam_analysis(self, text: str, language: str) -> dict:
-        """Real Gemini API call for scam analysis."""
+        """Real Gemini API call for scam analysis with retries and timeout."""
         start = time.monotonic()
         contents = f"Analyze this report (Language hint: {language}):\n\n{text}"
-        response = await self.client.aio.models.generate_content(
-            model=self.model_name,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SCAM_DETECTION_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                temperature=0.1,
-            ),
-        )
+        
+        max_retries = 3
+        response = None
+        for attempt in range(max_retries):
+            try:
+                # Assuming google-genai client supports timeout via config, if not, we use asyncio.wait_for
+                task = self.client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SCAM_DETECTION_SYSTEM_PROMPT,
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                    ),
+                )
+                response = await asyncio.wait_for(task, timeout=30.0)
+                break
+            except asyncio.TimeoutError:
+                logger.warning("gemini_scam_analysis_timeout", attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+            except Exception as e:
+                logger.warning("gemini_scam_analysis_error", error=str(e), attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                
         latency_ms = (time.monotonic() - start) * 1000
 
         result = self.safe_parse_json_response(response.text)
@@ -402,7 +421,7 @@ class GeminiService:
         return self._fallback_currency_analysis(denomination)
 
     async def _gemini_currency_analysis(self, image_bytes: bytes, denomination: Optional[int], mime_type: str = "image/jpeg") -> dict:
-        """Real Gemini Vision API call for currency analysis."""
+        """Real Gemini Vision API call for currency analysis with retries and timeout."""
         start = time.monotonic()
         denom_hint = f"The user believes this is a Rs {denomination} note." if denomination else ""
         contents_text = f"Analyse this Indian currency note image. {denom_hint} Check all security features carefully."
@@ -410,15 +429,31 @@ class GeminiService:
         # Convert bytes to Part for google-genai
         image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
 
-        response = await self.client.aio.models.generate_content(
-            model=self.model_name,
-            contents=[contents_text, image_part],
-            config=types.GenerateContentConfig(
-                system_instruction=CURRENCY_ANALYSIS_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                temperature=0.1,
-            ),
-        )
+        max_retries = 3
+        response = None
+        for attempt in range(max_retries):
+            try:
+                task = self.client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=[contents_text, image_part],
+                    config=types.GenerateContentConfig(
+                        system_instruction=CURRENCY_ANALYSIS_SYSTEM_PROMPT,
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                    ),
+                )
+                response = await asyncio.wait_for(task, timeout=45.0)
+                break
+            except asyncio.TimeoutError:
+                logger.warning("gemini_currency_analysis_timeout", attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+            except Exception as e:
+                logger.warning("gemini_currency_analysis_error", error=str(e), attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+
         latency_ms = (time.monotonic() - start) * 1000
 
         result = self.safe_parse_json_response(response.text)
@@ -471,11 +506,26 @@ class GeminiService:
                 "Return ONLY the transcription text, nothing else."
             )
 
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=[prompt, audio_part],
-                config=types.GenerateContentConfig(temperature=0.1),
-            )
+            max_retries = 3
+            response = None
+            for attempt in range(max_retries):
+                try:
+                    task = self.client.aio.models.generate_content(
+                        model=self.model_name,
+                        contents=[prompt, audio_part],
+                        config=types.GenerateContentConfig(temperature=0.1),
+                    )
+                    response = await asyncio.wait_for(task, timeout=60.0)
+                    break
+                except asyncio.TimeoutError:
+                    logger.warning("gemini_audio_transcription_timeout", attempt=attempt+1)
+                    if attempt == max_retries - 1:
+                        raise
+                except Exception as e:
+                    logger.warning("gemini_audio_transcription_error", error=str(e), attempt=attempt+1)
+                    if attempt == max_retries - 1:
+                        raise
+                    await asyncio.sleep(2 ** attempt)
 
             transcript = response.text.strip()
             logger.info("audio_transcribed", length=len(transcript))
@@ -506,14 +556,29 @@ class GeminiService:
         """Real Gemini chat response."""
         contents = f"Session ID: {session_id}\nLanguage preference: {language}\nUser message: {message}"
 
-        response = await self.client.aio.models.generate_content(
-            model=self.model_name,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=CITIZEN_SHIELD_SYSTEM_PROMPT,
-                temperature=0.7,
-            ),
-        )
+        max_retries = 3
+        response = None
+        for attempt in range(max_retries):
+            try:
+                task = self.client.aio.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=CITIZEN_SHIELD_SYSTEM_PROMPT,
+                        temperature=0.7,
+                    ),
+                )
+                response = await asyncio.wait_for(task, timeout=20.0)
+                break
+            except asyncio.TimeoutError:
+                logger.warning("gemini_chat_timeout", attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+            except Exception as e:
+                logger.warning("gemini_chat_error", error=str(e), attempt=attempt+1)
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
 
         result = self.safe_parse_json_response(response.text)
         if result is None:
@@ -585,11 +650,28 @@ class GeminiService:
                 prompt = EVIDENCE_PACKAGE_PROMPT.format(
                     intelligence_data=json.dumps(intelligence_data, indent=2)
                 )
-                response = await self.client.aio.models.generate_content(
-                    model=self.model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.1),
-                )
+                
+                max_retries = 3
+                response = None
+                for attempt in range(max_retries):
+                    try:
+                        task = self.client.aio.models.generate_content(
+                            model=self.model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(temperature=0.1),
+                        )
+                        response = await asyncio.wait_for(task, timeout=45.0)
+                        break
+                    except asyncio.TimeoutError:
+                        logger.warning("gemini_evidence_package_timeout", attempt=attempt+1)
+                        if attempt == max_retries - 1:
+                            raise
+                    except Exception as e:
+                        logger.warning("gemini_evidence_package_error", error=str(e), attempt=attempt+1)
+                        if attempt == max_retries - 1:
+                            raise
+                        await asyncio.sleep(2 ** attempt)
+                        
                 return response.text.strip()
             except Exception as e:
                 logger.error("gemini_evidence_package_failed", error=str(e), fallback=True)

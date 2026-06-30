@@ -9,3 +9,9 @@ def generate_evidence_task(cluster_id: int, task_id: str):
         cluster_id=cluster_id,
         task_id=task_id
     ))
+
+@app.task(name="tasks.graph_tasks.recompute_graph_clusters_task")
+def recompute_graph_clusters_task():
+    from services.graph_service import get_graph_service
+    svc = get_graph_service()
+    svc._recompute_clusters()

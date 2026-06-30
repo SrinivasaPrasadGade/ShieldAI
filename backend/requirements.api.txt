@@ -1,5 +1,0 @@
-# ── ShieldAI API Server Dependencies ────────────────────────
--r requirements.base.txt
-
-# Kafka producer (API publishes tasks to Kafka)
-aiokafka==0.10.0
