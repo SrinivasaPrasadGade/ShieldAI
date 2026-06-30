@@ -67,6 +67,17 @@ async def whatsapp_webhook(request: Request):
         incoming_msg = form_data.get("Body", "").strip()
         from_number = form_data.get("From", "").replace("whatsapp:", "")
         to_number = form_data.get("To", "")
+        message_sid = form_data.get("MessageSid", "")
+
+        if message_sid:
+            try:
+                import redis
+                r = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+                if not r.set(f"twilio_idempotency:{message_sid}", "1", nx=True, ex=86400):
+                    logger.info("twilio_webhook_duplicate_ignored", message_sid=message_sid)
+                    return Response(content="", media_type="application/xml")
+            except Exception as e:
+                logger.warning("twilio_idempotency_check_failed", error=str(e))
 
         logger.info(
             "whatsapp_message_received",
