@@ -22,7 +22,9 @@ def test_db_setup():
     db_path = os.path.join(temp_dir, "shield_ai_test.db")
     os.environ["SQLITE_DB_PATH"] = db_path
     from models.database import init_sqlite_db
+    from models.task_store import init_task_store
     init_sqlite_db()
+    init_task_store()
     yield
     try:
         shutil.rmtree(temp_dir)
