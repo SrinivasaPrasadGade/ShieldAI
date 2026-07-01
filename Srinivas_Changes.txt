@@ -2,6 +2,8 @@
 
 ## Secrets Management Changes & Fixes
 
+Branch: `fix/secure-firebase-credentials` (merged into `main`)
+
 1. docker-compose.yml:
    - Removed the hardcoded volume mounts for `./backend/firebase-credentials.json` from the `api`, `worker`, and `realtime` services. This prevents physical secret files from being required and mounted on host machines.
    - Replaced `FIREBASE_CREDENTIALS_PATH` environment variables with `FIREBASE_CREDENTIALS_JSON` and `FIREBASE_CREDENTIALS_B64` across all services to allow securely injecting credentials via the environment.
@@ -21,6 +23,8 @@
 
 ## Authentication & Authorization Security Updates
 
+Branch: `fix/jwt-auth-rbac` (merged into `main`)
+
 1. backend/middleware.py:
    - Removed the insecure, hardcoded `demo-valid-token` API key validation logic from `AuthMiddleware`.
    - Implemented real JWT verification using `firebase_admin.auth.verify_id_token(token)`.
@@ -36,11 +40,15 @@
 
 ## Zero-Shot Classification Scam Detection Fixes
 
+Branch: `fix/zero-shot-transformers-available` (merged into `main`)
+
 1. backend/services/scam_detector.py:
    - Fixed a `NameError` crash where `TRANSFORMERS_AVAILABLE` was referenced when Zero-Shot classification was enabled, but never imported or defined.
    - Implemented a dynamic import block to safely check if the `transformers` library is installed and set `TRANSFORMERS_AVAILABLE` accordingly.
 
 ## Currency Image Validation — Firestore Persistence Fix
+
+Branch: `fix/currency-firestore-persistence` (merged into `main`)
 
 1. backend/services/currency_analyzer.py:
    - Added `_CITY_COORDS` module-level lookup table mapping 11 major Indian cities to their (lat, lng) coordinates.
