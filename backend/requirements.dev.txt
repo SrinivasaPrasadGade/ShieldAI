@@ -5,4 +5,3 @@
 pytest>=7.0.0
 pytest-asyncio
 httpx>=0.24.0
-starlette>=0.27.0
