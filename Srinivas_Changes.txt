@@ -80,3 +80,12 @@ Branch: `feature/audio-scam-tests` (merged into `main`)
    - `test_api_analyze_audio_wav_format_accepted` — `audio/wav` format is accepted and returns `200`.
    - `test_api_analyze_audio_response_schema` — response contains all 8 fields defined in `ScamAudioResponse` schema.
 
+## Test Health — Import Fix
+
+Branch: `fix/test-health-import` (merged into `main`)
+
+1. backend/tests/test_health.py:
+   - Fixed a test-collection import error where `TestClient` was imported from `fastapi.testclient`.
+   - `TestClient` is provided by Starlette (the underlying framework FastAPI is built on) and must be imported from `starlette.testclient`. The FastAPI re-export was removed in newer versions, causing the CI job to fail at the collection stage before any test ran.
+   - Changed `from fastapi.testclient import TestClient` → `from starlette.testclient import TestClient`.
+
