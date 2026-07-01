@@ -190,7 +190,7 @@ class EvidenceService:
             import json, hashlib, hmac
             from config import settings
             evidence_str = json.dumps(evidence, sort_keys=True)
-            secret = getattr(settings, 'SECRET_KEY', 'default-secret-key-for-dev').encode('utf-8')
+            secret = settings.SECRET_KEY.encode('utf-8')
             signature = hmac.new(secret, evidence_str.encode('utf-8'), hashlib.sha256).hexdigest()
             
             evidence["digital_signature"] = signature

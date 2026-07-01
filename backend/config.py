@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "AI-powered intelligence platform for digital public safety"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    SECRET_KEY: str = "default-secret-key-for-dev"
 
     # ── Server ───────────────────────────────────────────────────
     HOST: str = "0.0.0.0"
