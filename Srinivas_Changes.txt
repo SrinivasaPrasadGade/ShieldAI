@@ -33,3 +33,10 @@
 3. frontend/src/App.jsx:
    - Removed the mocked token insertion `localStorage.setItem('auth_token', 'demo-valid-token')` when attempting to access the law enforcement dashboard without credentials.
    - The application now strictly enforces authentication for the dashboard, alerting the user and blocking client-side routing if a valid Firebase JWT `auth_token` is not present in local storage.
+
+## Zero-Shot Classification Scam Detection Fixes
+
+1. backend/services/scam_detector.py:
+   - Fixed a `NameError` crash where `TRANSFORMERS_AVAILABLE` was referenced when Zero-Shot classification was enabled, but never imported or defined.
+   - Implemented a dynamic import block to safely check if the `transformers` library is installed and set `TRANSFORMERS_AVAILABLE` accordingly.
+
