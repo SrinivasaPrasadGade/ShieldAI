@@ -97,3 +97,12 @@ Branch: `fix/test-health-import` (merged into `main`)
    - `TestClient` is provided by Starlette (the underlying framework FastAPI is built on) and must be imported from `starlette.testclient`. The FastAPI re-export was removed in newer versions, causing the CI job to fail at the collection stage before any test ran.
    - Changed `from fastapi.testclient import TestClient` → `from starlette.testclient import TestClient`.
 
+## CI — Missing `starlette` Dependency Fix
+
+Branch: `fix/starlette-missing-dep` (merged into `main`)
+
+1. backend/requirements.dev.txt:
+   - Added `starlette>=0.27.0` as an explicit dev dependency.
+   - Root cause: `starlette` is a transitive dependency of `fastapi` and is always installed when `fastapi` is installed. However, on a clean CI environment the version resolution is not guaranteed — if pip's solver installs an older `fastapi` first and then resolves `starlette` separately, the version available may not export `testclient` in the expected location. Pinning `starlette>=0.27.0` directly in `requirements.dev.txt` ensures the correct version is installed before pytest collects tests.
+   - The CI workflow (`ci.yml`) installs `requirements.dev.txt` and then runs `pytest tests/`, so this file is the correct place for the fix — no workflow changes are needed.
+
