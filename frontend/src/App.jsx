@@ -80,10 +80,9 @@ function App() {
       // Token check before client-side routing
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        alert("Unauthorized: Law enforcement dashboard requires valid credentials.");
-        // For demo purposes, we will mock authentication
-        localStorage.setItem('auth_token', 'demo-valid-token');
-        setIsAuthenticated(true);
+        alert("Unauthorized: Law enforcement dashboard requires a valid Firebase authentication token. Please log in first.");
+        setIsAuthenticated(false);
+        return; // Block client-side routing
       } else {
         setIsAuthenticated(true);
       }

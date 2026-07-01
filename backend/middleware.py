@@ -11,6 +11,9 @@ import random
 import asyncio
 from typing import Callable
 
+from firebase_admin import auth
+from firebase_admin.exceptions import FirebaseError
+
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -129,30 +132,45 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 class AuthMiddleware(BaseHTTPMiddleware):
     """
-    Basic authentication for law-enforcement endpoints to prevent exposure.
-    Expects Authorization: Bearer <token> or X-API-Key: <token>
+    Firebase authentication for law-enforcement endpoints.
+    Expects Authorization: Bearer <token>.
     """
-    def __init__(self, app: FastAPI, protected_prefixes: tuple = (), api_key: str = "demo-valid-token"):
+    def __init__(self, app: FastAPI, protected_prefixes: tuple = ()):
         super().__init__(app)
         self.protected_prefixes = protected_prefixes
-        self.api_key = api_key
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if any(request.url.path.startswith(prefix) for prefix in self.protected_prefixes):
             auth_header = request.headers.get("Authorization", "")
-            api_key_header = request.headers.get("X-API-Key", "")
             
-            valid = False
-            if auth_header.startswith("Bearer ") and auth_header.split(" ")[1] == self.api_key:
-                valid = True
-            elif api_key_header == self.api_key:
-                valid = True
-                
-            if not valid:
-                logger.warning("unauthorized_access_attempt", path=request.url.path, client_ip=request.client.host if request.client else "unknown")
+            if not auth_header.startswith("Bearer "):
+                logger.warning("unauthorized_access_attempt", reason="missing_bearer", path=request.url.path, client_ip=request.client.host if request.client else "unknown")
                 return JSONResponse(
                     status_code=401,
-                    content={"error": "unauthorized", "message": "Valid API Key required for law-enforcement routes."}
+                    content={"error": "unauthorized", "message": "Valid Bearer token required for law-enforcement routes."}
+                )
+                
+            token = auth_header.split(" ")[1]
+            try:
+                # Verify the Firebase JWT
+                decoded_token = auth.verify_id_token(token)
+                
+                # Check for required role
+                if decoded_token.get("role") != "law_enforcement" and not decoded_token.get("admin"):
+                    logger.warning("forbidden_access_attempt", reason="insufficient_permissions", uid=decoded_token.get("uid"), path=request.url.path, client_ip=request.client.host if request.client else "unknown")
+                    return JSONResponse(
+                        status_code=403,
+                        content={"error": "forbidden", "message": "Insufficient permissions to access law-enforcement routes."}
+                    )
+                    
+                # Optionally inject the user into the request state
+                request.state.user = decoded_token
+                
+            except FirebaseError as e:
+                logger.warning("unauthorized_access_attempt", reason="invalid_token", error=str(e), path=request.url.path, client_ip=request.client.host if request.client else "unknown")
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "unauthorized", "message": "Invalid or expired token."}
                 )
                 
         return await call_next(request)

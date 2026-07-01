@@ -41,10 +41,11 @@ async def lifespan(app: FastAPI):
     logger.info("server_starting", version=settings.APP_VERSION)
 
     # ── Startup ──────────────────────────────────────────────
-    # 1. Initialize SQLite database
-    from models.database import init_sqlite_db
+    # 1. Initialize SQLite database and Firebase
+    from models.database import init_sqlite_db, init_firebase
     init_sqlite_db()
-    logger.info("sqlite_initialized")
+    init_firebase()
+    logger.info("databases_initialized")
 
     # 2. Initialize async task store table
     from models.task_store import init_task_store, recover_stale, cleanup_expired
@@ -120,8 +121,7 @@ app.add_middleware(RequestIDMiddleware)
 # Authentication for Law Enforcement routes
 app.add_middleware(
     AuthMiddleware,
-    protected_prefixes=("/api/graph", "/api/geo"),
-    api_key=getattr(settings, "API_KEY", "demo-valid-token")
+    protected_prefixes=("/api/graph", "/api/geo")
 )
 
 # CORS

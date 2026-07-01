@@ -18,3 +18,18 @@
 4. .gitignore:
    - Added `*.env` and `.env.*` to completely block all environment configuration files from being tracked by git.
    - Added a global `firebase-credentials.json` ignore rule to prevent accidental commits of this file regardless of which directory it resides in.
+
+## Authentication & Authorization Security Updates
+
+1. backend/middleware.py:
+   - Removed the insecure, hardcoded `demo-valid-token` API key validation logic from `AuthMiddleware`.
+   - Implemented real JWT verification using `firebase_admin.auth.verify_id_token(token)`.
+   - Added Role-Based Access Control (RBAC). The middleware now verifies that the decoded JWT contains a `role` claim of `law_enforcement` or an `admin` claim set to `true` before granting access to protected routes like `/api/graph` and `/api/geo`. It returns `401 Unauthorized` for invalid tokens and `403 Forbidden` for insufficient permissions.
+
+2. backend/models/database.py & backend/main.py:
+   - Refactored the Firebase app initialization into a new, dedicated `init_firebase()` function in `database.py`.
+   - Added an explicit call to `init_firebase()` in the FastAPI `lifespan` handler within `main.py` to ensure the Firebase Admin SDK is fully initialized at startup and ready to verify tokens on the very first incoming request.
+
+3. frontend/src/App.jsx:
+   - Removed the mocked token insertion `localStorage.setItem('auth_token', 'demo-valid-token')` when attempting to access the law enforcement dashboard without credentials.
+   - The application now strictly enforces authentication for the dashboard, alerting the user and blocking client-side routing if a valid Firebase JWT `auth_token` is not present in local storage.
