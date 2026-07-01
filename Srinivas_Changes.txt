@@ -105,3 +105,19 @@ Branch: `fix/fastapi-pydantic-conflict` (merged into `main`)
 1. backend/requirements.txt:
    - Upgraded `fastapi==0.104.0` to `fastapi==0.109.0`.
    - The older version of FastAPI (0.104.0) explicitly conflicted with `pydantic==2.0.0` (it disallowed `!=2.0.0`), causing a `ResolutionImpossible` error in the CI pipeline during dependency installation. Upgrading to `0.109.0` ensures full compatibility with Pydantic v2 while keeping the dependencies modern.
+
+## Docker Orchestration Configuration Gaps Fix
+
+Branch: `fix/docker-config-gaps` (merged into `main`)
+
+1. frontend/Dockerfile.frontend:
+   - Updated the exposed port from `5173` to `5174` to match the actual port Vite runs on and how it is mapped in `docker-compose.yml`.
+
+2. .env.example & .env:
+   - Added `http://localhost:5174` to `CORS_ORIGINS` to prevent CORS issues when the frontend app runs locally on port 5174.
+
+3. backend/config.py:
+   - Added the `SECRET_KEY` property to the `Settings` class so that the custom environment variable is correctly loaded by Pydantic.
+
+4. backend/services/evidence_service.py:
+   - Updated the evidence signature secret retrieval to directly use `settings.SECRET_KEY` instead of a dynamic fallback.
