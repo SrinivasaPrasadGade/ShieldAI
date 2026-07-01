@@ -187,7 +187,7 @@ Implemented by:
 Limitations:
 
 - The frontend has a local simulator if the verification API is offline.
-- The backend does not appear to persist completed verification results into the Firestore `currency_checks` collection, but `/api/currency/stats` and `/api/currency/ficn-map` read from that collection. Those endpoints are likely driven by seeded/external data rather than new uploads.
+- ~~The backend does not appear to persist completed verification results into the Firestore `currency_checks` collection~~ — **Fixed** (`fix/currency-firestore-persistence`): `run_verification` now writes the completed result to Firestore after every successful verification, so `/api/currency/stats` and `/api/currency/ficn-map` reflect real uploads in addition to seeded data.
 
 ### Live Alerting
 
