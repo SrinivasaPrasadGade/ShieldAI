@@ -2,7 +2,8 @@
 Currency analysis service for ShieldAI.
 
 Handles image preprocessing (OpenCV), async verification via Gemini Vision,
-result polling, FICN mapping, and statistics.
+result polling, FICN mapping, statistics, and Firestore persistence of
+completed checks (so /stats and /ficn-map reflect real uploads).
 """
 
 import uuid
@@ -25,6 +26,65 @@ try:
 except ImportError:
     OPENCV_AVAILABLE = False
     logger.warning("opencv_not_available", message="Image preprocessing disabled. pip install opencv-python-headless numpy")
+
+
+# ── Location helper ─────────────────────────────────────────────────────────
+
+# Known city coordinates (lat, lng) for quick string → geo lookup
+_CITY_COORDS: dict[str, tuple[float, float]] = {
+    "mumbai":    (19.0760,  72.8777),
+    "delhi":     (28.7041,  77.1025),
+    "bengaluru": (12.9716,  77.5946),
+    "bangalore": (12.9716,  77.5946),
+    "kolkata":   (22.5726,  88.3639),
+    "hyderabad": (17.3850,  78.4867),
+    "chennai":   (13.0827,  80.2707),
+    "pune":      (18.5204,  73.8567),
+    "ahmedabad": (23.0225,  72.5714),
+    "amritsar":  (31.6340,  74.8723),
+    "malda":     (25.0108,  88.1440),
+}
+
+
+def _parse_location(location: Optional[str]) -> dict:
+    """
+    Convert the optional ``location`` string into a Firestore-compatible
+    ``{lat, lng, city}`` dict.
+
+    Accepted formats
+    ----------------
+    - ``None``                   → ``{lat: 0, lng: 0, city: "Unknown"}``
+    - ``"Mumbai"``               → looked up in _CITY_COORDS
+    - ``"19.0760,72.8777"``      → parsed as lat,lng (city="Unknown")
+    - ``"Mumbai,19.0760,72.8777"``→ city + explicit coords
+    """
+    if not location:
+        return {"lat": 0.0, "lng": 0.0, "city": "Unknown"}
+
+    parts = [p.strip() for p in location.split(",")]
+
+    # Try fully-numeric two-part "lat,lng"
+    if len(parts) == 2:
+        try:
+            return {"lat": float(parts[0]), "lng": float(parts[1]), "city": "Unknown"}
+        except ValueError:
+            pass
+
+    # Three-part "city,lat,lng"
+    if len(parts) == 3:
+        try:
+            return {"lat": float(parts[1]), "lng": float(parts[2]), "city": parts[0]}
+        except ValueError:
+            pass
+
+    # Plain city name
+    city_key = parts[0].lower()
+    if city_key in _CITY_COORDS:
+        lat, lng = _CITY_COORDS[city_key]
+        return {"lat": lat, "lng": lng, "city": parts[0]}
+
+    # Unrecognised string — store as city name with zero coords
+    return {"lat": 0.0, "lng": 0.0, "city": parts[0]}
 
 
 class CurrencyAnalyzer:
@@ -303,9 +363,58 @@ class CurrencyAnalyzer:
                 confidence=result.get("confidence"),
             )
 
+            # 5. Persist to Firestore so /stats and /ficn-map reflect real uploads
+            await self._persist_to_firestore(
+                task_id=task_id,
+                denomination=denomination,
+                file_url=file_url,
+                location=location,
+                task_result=task_result,
+            )
+
         except Exception as e:
             logger.error("verification_failed", task_id=task_id, error=str(e))
             task_store.update_task(task_id, status="failed", error=str(e))
+
+    async def _persist_to_firestore(
+        self,
+        task_id: str,
+        denomination: Optional[int],
+        file_url: Optional[str],
+        location: Optional[str],
+        task_result: dict,
+    ) -> None:
+        """
+        Best-effort write of the completed verification result into the
+        Firestore ``currency_checks`` collection.
+
+        This makes ``/api/currency/stats`` and ``/api/currency/ficn-map``
+        reflect real uploads rather than only seeded demo data.
+        A failure here is logged but does NOT fail the overall task.
+        """
+        try:
+            from models.database import get_firestore_client
+            db = get_firestore_client()
+            if db is None:
+                logger.warning("firestore_unavailable_skipping_currency_persist", task_id=task_id)
+                return
+
+            doc = {
+                "id": task_id,
+                "denomination": denomination,
+                "verdict": task_result.get("verdict"),
+                "confidence": task_result.get("confidence"),
+                "failed_features": task_result.get("failed_features", []),
+                "gemini_analysis": task_result.get("analysis", ""),
+                "image_url": file_url or "",
+                "location": _parse_location(location),
+                "submitted_by": "field_upload",
+                "created_at": datetime.now(timezone.utc),
+            }
+            db.collection("currency_checks").document(task_id).set(doc)
+            logger.info("currency_check_persisted_to_firestore", task_id=task_id, verdict=doc["verdict"])
+        except Exception as persist_err:
+            logger.error("currency_firestore_persist_failed", task_id=task_id, error=str(persist_err))
 
     def get_result(self, task_id: str) -> Optional[dict]:
         """
