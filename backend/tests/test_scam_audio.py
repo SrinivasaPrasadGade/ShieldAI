@@ -13,10 +13,18 @@ Covers:
 """
 
 import io
+import sys
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from fastapi.testclient import TestClient
+
+# Extend the firebase_admin mock already set up in conftest.py to also cover
+# firebase_admin.exceptions, which middleware.py imports directly.
+# Without this, importing `main` inside the client fixture raises:
+#   ModuleNotFoundError: No module named 'firebase_admin.exceptions'
+if "firebase_admin.exceptions" not in sys.modules:
+    sys.modules["firebase_admin.exceptions"] = MagicMock()
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
