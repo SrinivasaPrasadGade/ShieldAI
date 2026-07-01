@@ -1,0 +1,20 @@
+# Srinivas
+
+## Secrets Management Changes & Fixes
+
+1. docker-compose.yml:
+   - Removed the hardcoded volume mounts for `./backend/firebase-credentials.json` from the `api`, `worker`, and `realtime` services. This prevents physical secret files from being required and mounted on host machines.
+   - Replaced `FIREBASE_CREDENTIALS_PATH` environment variables with `FIREBASE_CREDENTIALS_JSON` and `FIREBASE_CREDENTIALS_B64` across all services to allow securely injecting credentials via the environment.
+
+2. backend/config.py:
+   - Added `FIREBASE_CREDENTIALS_JSON` and `FIREBASE_CREDENTIALS_B64` to the `Settings` class so `pydantic` can safely load these values from the environment or `.env` files.
+
+3. backend/models/database.py:
+   - Updated the `get_firestore_client()` initialization function to prioritize checking for the `FIREBASE_CREDENTIALS_B64` or `FIREBASE_CREDENTIALS_JSON` environment variables.
+   - Added parsing logic using the `json` and `base64` modules. This converts the environment string into a Python dictionary, which is then loaded into `credentials.Certificate(cred_dict)`.
+   - Maintained fallback support for reading the physical `firebase-credentials.json` file (useful for local development convenience if a developer hasn't set up the environment variables).
+   - Preserved the final fallback to Application Default Credentials (ADC) for Google Cloud Run and GKE zero-key workload identity environments.
+
+4. .gitignore:
+   - Added `*.env` and `.env.*` to completely block all environment configuration files from being tracked by git.
+   - Added a global `firebase-credentials.json` ignore rule to prevent accidental commits of this file regardless of which directory it resides in.

@@ -17,10 +17,9 @@ pip-delete-this-directory.txt
 
 # Environment & Secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+*.env
+firebase-credentials.json
 backend/firebase-credentials.json
 
 # OS files

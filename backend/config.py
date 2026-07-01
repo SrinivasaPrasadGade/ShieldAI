@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     # ── Database & Storage ───────────────────────────────────────
     SQLITE_DB_PATH: str = "backend/data/shield_ai.db"
     FIREBASE_CREDENTIALS_PATH: str = "backend/firebase-credentials.json"
+    FIREBASE_CREDENTIALS_JSON: str = ""
+    FIREBASE_CREDENTIALS_B64: str = ""
     FIREBASE_STORAGE_BUCKET: str = "shieldai-hackathon.appspot.com"  # Replace with actual bucket name
 
     @property

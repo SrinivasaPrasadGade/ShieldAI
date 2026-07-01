@@ -122,16 +122,38 @@ _firestore_client = _NOT_INITIALIZED
 def get_firestore_client():
     """
     Initializes and returns the Firestore client.
-    First attempts to authenticate using the configured credentials file,
-    then falls back to Application Default Credentials (ADC).
+    First attempts to authenticate using the configured credentials environment variables,
+    then checks for a credentials file, and finally falls back to Application Default Credentials (ADC).
     """
     global _firestore_client
     if _firestore_client is _NOT_INITIALIZED:
         from config import settings
+        import json
+        import base64
+        
         cred_path = settings.firebase_credentials_abs_path
         
+        # Check if the credentials are provided via environment variables
+        if getattr(settings, 'FIREBASE_CREDENTIALS_B64', ''):
+            try:
+                cred_dict = json.loads(base64.b64decode(settings.FIREBASE_CREDENTIALS_B64).decode('utf-8'))
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+            except ValueError:
+                pass
+            except Exception as e:
+                print(f"Warning: Failed to initialize Firebase with FIREBASE_CREDENTIALS_B64: {e}")
+        elif getattr(settings, 'FIREBASE_CREDENTIALS_JSON', ''):
+            try:
+                cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+            except ValueError:
+                pass
+            except Exception as e:
+                print(f"Warning: Failed to initialize Firebase with FIREBASE_CREDENTIALS_JSON: {e}")
         # Check if the credentials file exists, is a file, and is populated
-        if os.path.exists(cred_path) and os.path.isfile(cred_path) and os.path.getsize(cred_path) > 0:
+        elif os.path.exists(cred_path) and os.path.isfile(cred_path) and os.path.getsize(cred_path) > 0:
             cred = credentials.Certificate(cred_path)
             try:
                 firebase_admin.initialize_app(cred)

@@ -28,7 +28,8 @@ services:
       - "8000:8000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON}
+      - FIREBASE_CREDENTIALS_B64=${FIREBASE_CREDENTIALS_B64}
       - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
       - SQLITE_DB_PATH=/app/data/shield_ai.db
       - ENABLE_BERT=${ENABLE_BERT:-false}
@@ -38,7 +39,6 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
     volumes:
-      - ./backend/firebase-credentials.json:/app/firebase-credentials.json:ro
       - ./backend/data:/app/data
     networks:
       - shield_net
@@ -55,11 +55,10 @@ services:
       - "5001:5001"
     environment:
       - REDIS_URL=redis://redis:6379
-      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON}
+      - FIREBASE_CREDENTIALS_B64=${FIREBASE_CREDENTIALS_B64}
       - SQLITE_DB_PATH=/app/data/shield_ai.db
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - ./backend/firebase-credentials.json:/app/firebase-credentials.json:ro
     networks:
       - shield_net
     depends_on:
@@ -75,7 +74,8 @@ services:
         ENABLE_ZERO_SHOT: ${ENABLE_ZERO_SHOT:-false}
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON}
+      - FIREBASE_CREDENTIALS_B64=${FIREBASE_CREDENTIALS_B64}
       - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
       - SQLITE_DB_PATH=/app/data/shield_ai.db
       - ENABLE_BERT=${ENABLE_BERT:-false}
@@ -86,7 +86,6 @@ services:
       - HF_HOME=/app/.cache/huggingface
       - TRANSFORMERS_CACHE=/app/.cache/huggingface
     volumes:
-      - ./backend/firebase-credentials.json:/app/firebase-credentials.json:ro
       - ./backend/data:/app/data
     networks:
       - shield_net
