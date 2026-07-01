@@ -40,6 +40,13 @@ sys.modules['firebase_admin'] = mock.MagicMock()
 sys.modules['firebase_admin.credentials'] = mock.MagicMock()
 sys.modules['firebase_admin.firestore'] = mock.MagicMock()
 sys.modules['firebase_admin.storage'] = mock.MagicMock()
+sys.modules['firebase_admin.auth'] = mock.MagicMock()
+
+# Mock exceptions with a valid BaseException class so 'except FirebaseError:' doesn't throw a TypeError
+mock_exceptions = mock.MagicMock()
+class MockFirebaseError(Exception): pass
+mock_exceptions.FirebaseError = MockFirebaseError
+sys.modules['firebase_admin.exceptions'] = mock_exceptions
 
 # Configure the mocked functions
 import firebase_admin
