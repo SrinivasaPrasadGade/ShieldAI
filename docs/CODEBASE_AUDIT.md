@@ -295,7 +295,7 @@ Implemented by:
 
 Security caveat:
 
-- `evidence_service.py` reads `settings.SECRET_KEY`, but `SECRET_KEY` is not defined in `backend/config.py`. Because pydantic settings ignores undeclared extras, this likely always uses the default development secret. A real production signature key should be added to `Settings`.
+- ~~`evidence_service.py` reads `settings.SECRET_KEY`, but `SECRET_KEY` is not defined in `backend/config.py`~~ — **Fixed** (`fix/docker-config-gaps`): `SECRET_KEY` is now fully declared in `Settings` under `backend/config.py` to allow custom environment variables to be loaded.
 
 ### Geospatial Intelligence
 
@@ -625,8 +625,8 @@ Frontend:
 
 Config caveats:
 
-- `.env.example` has `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`, while the frontend runs on `5174`. `backend/config.py` defaults include `5174`, but copying `.env.example` exactly may override that and cause local CORS issues.
-- `SECRET_KEY` is used by evidence signing but not declared in `Settings`.
+- ~~`.env.example` has `CORS_ORIGINS=http://localhost:3000,http://localhost:5173`~~ — **Fixed** (`fix/docker-config-gaps`): `.env.example` and the active `.env` file have been updated to include `http://localhost:5174` in `CORS_ORIGINS`.
+- ~~`SECRET_KEY` is used by evidence signing but not declared in `Settings`~~ — **Fixed** (`fix/docker-config-gaps`): `SECRET_KEY` is now fully declared in `Settings` under `backend/config.py`.
 - `backend/firebase-credentials.json` exists locally in this workspace and is ignored. It should not be opened, printed, or committed.
 
 ## 6. Deployment & Usage
@@ -726,13 +726,13 @@ Current frontend gap:
 
 - Zero-shot integration is partially inconsistent: `zero_shot_classifier.py` and `risk_fusion_service.py` exist, but `ScamDetector` still has its own legacy classifier path and an undefined `TRANSFORMERS_AVAILABLE`.
 - Frontend dashboard auth is incomplete: token is checked locally but not attached to API calls.
-- Evidence signature secret currently falls back to a development value because `SECRET_KEY` is not declared in settings.
+- ~~Evidence signature secret currently falls back to a development value because `SECRET_KEY` is not declared in settings.~~ — **Fixed** (`fix/docker-config-gaps`): `SECRET_KEY` is now fully declared in settings.
 - Currency verification results are not clearly written into Firestore `currency_checks`, even though stats/map endpoints read from there.
 - API docs are partly stale: `docs/API.md` mentions `POST /api/scam/report`, but actual reporting is `POST /api/citizen/report`; docs mention API key headers, while middleware requires Firebase Bearer JWT.
 - Some planning-doc technologies are not implemented: D3, GeoPandas, Whisper, Detoxify, SpeechBrain.
 - Firestore and SQLite split ownership can confuse maintainers; document which data lives where.
 - Default FastAPI docs behavior conflicts with README because `docs_url` is disabled unless `DEBUG=true`.
-- `frontend/Dockerfile.frontend` exposes port `5173`, but package/compose run the app on `5174`.
+- ~~`frontend/Dockerfile.frontend` exposes port `5173`, but package/compose run the app on `5174`.~~ — **Fixed** (`fix/docker-config-gaps`): `frontend/Dockerfile.frontend` now exposes port `5174`.
 - The local environment here did not have Python test dependencies installed, so I could not execute the pytest suite without installing packages.
 
 ## 8. File Map
@@ -809,7 +809,7 @@ If asked what you would improve next:
 
 1. Fix zero-shot integration and wire `RiskFusionService` into `ScamDetector`.
 2. Add frontend login and Axios Bearer-token injection for protected graph/geo calls.
-3. Add `SECRET_KEY` to settings and rotate evidence signing secrets.
+3. ~~Add `SECRET_KEY` to settings and rotate evidence signing secrets.~~ — **Fixed**
 4. Persist completed currency checks into Firestore so stats/map reflect live uploads.
 5. Align README/API docs with actual routes/auth/debug behavior.
 6. Add production database strategy if scaling beyond single-node SQLite writes.
