@@ -98,3 +98,10 @@ Branch: `fix/ci-requirements` (merged into `main`)
 2. backend/tests/test_health.py:
    - Reverted the `TestClient` import back to `from fastapi.testclient import TestClient` instead of `starlette.testclient`. `fastapi` bundles the test client appropriately, making this a more robust import path when `fastapi` is part of the core requirements.
 
+## FastAPI & Pydantic Dependency Conflict Fix
+
+Branch: `fix/fastapi-pydantic-conflict` (merged into `main`)
+
+1. backend/requirements.txt:
+   - Upgraded `fastapi==0.104.0` to `fastapi==0.109.0`.
+   - The older version of FastAPI (0.104.0) explicitly conflicted with `pydantic==2.0.0` (it disallowed `!=2.0.0`), causing a `ResolutionImpossible` error in the CI pipeline during dependency installation. Upgrading to `0.109.0` ensures full compatibility with Pydantic v2 while keeping the dependencies modern.
