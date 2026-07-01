@@ -40,3 +40,43 @@
    - Fixed a `NameError` crash where `TRANSFORMERS_AVAILABLE` was referenced when Zero-Shot classification was enabled, but never imported or defined.
    - Implemented a dynamic import block to safely check if the `transformers` library is installed and set `TRANSFORMERS_AVAILABLE` accordingly.
 
+## Currency Image Validation — Firestore Persistence Fix
+
+1. backend/services/currency_analyzer.py:
+   - Added `_CITY_COORDS` module-level lookup table mapping 11 major Indian cities to their (lat, lng) coordinates.
+   - Added `_parse_location(location)` helper function that normalises the optional `location` string passed to the Celery worker into a `{lat, lng, city}` dict matching the Firestore document schema expected by `/api/currency/ficn-map`. Handles four input shapes: `None`, a plain city name (e.g. `"Mumbai"`), a `"lat,lng"` pair, and a `"city,lat,lng"` triple.
+   - Added `_persist_to_firestore()` async method on `CurrencyAnalyzer`. After every successful verification it writes a complete document to the Firestore `currency_checks` collection (fields: `id`, `denomination`, `verdict`, `confidence`, `failed_features`, `gemini_analysis`, `image_url`, `location`, `submitted_by`, `created_at`). The write is best-effort — a failure is logged via `structlog` but does not alter the task result stored in SQLite.
+   - Updated `run_verification()` to call `_persist_to_firestore()` as step 5, after `task_store.update_task(task_id, status="complete", ...)` succeeds. This closes the gap where `/api/currency/stats` and `/api/currency/ficn-map` only reflected seeded demo data instead of real uploads.
+
+2. docs/CODEBASE_AUDIT.md:
+   - Updated the Counterfeit Currency Verification limitations section to mark the Firestore persistence gap as resolved and reference the fix branch `fix/currency-firestore-persistence`.
+
+
+## Audio Scam Transcription — Unit & Integration Tests
+
+Branch: `feature/audio-scam-tests` (merged into `main`)
+
+1. backend/tests/test_scam_audio.py (new file):
+   - Added 14 unit and integration tests covering the full audio scam transcription stack.
+   - Added `sys.modules["firebase_admin.exceptions"] = MagicMock()` at module level to extend the conftest.py firebase mock, fixing a `ModuleNotFoundError` caused by `middleware.py` importing `firebase_admin.exceptions` directly.
+
+   GeminiService-level tests (4):
+   - `test_gemini_transcribe_audio_success` — verifies transcript text is returned and whitespace-stripped on a successful Gemini API response.
+   - `test_gemini_transcribe_audio_unavailable` — verifies a `RuntimeError` is raised when no Gemini API key is configured.
+   - `test_gemini_transcribe_audio_api_error_raises` — verifies a `RuntimeError` is raised after all retry attempts fail.
+   - `test_gemini_transcribe_audio_prompt_contains_hindi_instruction` — verifies the transcription prompt includes multilingual (Hindi/Indian language) handling instructions.
+
+   ScamDetector orchestration-level tests (3):
+   - `test_scam_detector_analyze_audio_full_pipeline` — verifies the full chain: `transcribe_audio` → `analyze_text` → merged result dict containing the `transcript` key.
+   - `test_scam_detector_analyze_audio_low_risk` — verifies benign audio content is correctly classified as LOW risk.
+   - `test_scam_detector_analyze_audio_propagates_error` — verifies that a `RuntimeError` from `GeminiService` bubbles up through `ScamDetector`.
+
+   API endpoint-level tests (7):
+   - `test_api_analyze_audio_success` — valid MP3 upload returns `200` with all expected fields.
+   - `test_api_analyze_audio_unsupported_format` — `video/mp4` file returns `422 Unprocessable Entity`.
+   - `test_api_analyze_audio_file_too_large` — file exceeding `MAX_UPLOAD_SIZE_MB` returns `413 Request Entity Too Large`.
+   - `test_api_analyze_audio_empty_file` — zero-byte file returns `422 Unprocessable Entity`.
+   - `test_api_analyze_audio_gemini_down_returns_503` — Gemini API failure surfaces as `503 Service Unavailable`.
+   - `test_api_analyze_audio_wav_format_accepted` — `audio/wav` format is accepted and returns `200`.
+   - `test_api_analyze_audio_response_schema` — response contains all 8 fields defined in `ScamAudioResponse` schema.
+
