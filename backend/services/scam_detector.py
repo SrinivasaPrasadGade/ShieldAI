@@ -17,6 +17,12 @@ from services.gemini_service import get_gemini_service
 logger = get_logger("shield_ai.scam_detector")
 
 # We no longer import transformers here directly; it is handled by the zero_shot_classifier service.
+try:
+    import transformers
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
 
 
 # Scam classification candidate labels for zero-shot
