@@ -88,21 +88,13 @@ Branch: `feature/audio-scam-tests` (merged into `main`)
    - `test_api_analyze_audio_wav_format_accepted` — `audio/wav` format is accepted and returns `200`.
    - `test_api_analyze_audio_response_schema` — response contains all 8 fields defined in `ScamAudioResponse` schema.
 
-## Test Health — Import Fix
+## Test Health & CI Requirements Fix
 
-Branch: `fix/test-health-import` (merged into `main`)
+Branch: `fix/ci-requirements` (merged into `main`)
 
-1. backend/tests/test_health.py:
-   - Fixed a test-collection import error where `TestClient` was imported from `fastapi.testclient`.
-   - `TestClient` is provided by Starlette (the underlying framework FastAPI is built on) and must be imported from `starlette.testclient`. The FastAPI re-export was removed in newer versions, causing the CI job to fail at the collection stage before any test ran.
-   - Changed `from fastapi.testclient import TestClient` → `from starlette.testclient import TestClient`.
+1. .github/workflows/ci.yml:
+   - Fixed the `pytest` collection failure by updating the dependency installation step to install the actual application dependencies (`-r requirements.txt`) before installing dev dependencies. This ensures that `fastapi` (and its bundled `starlette`) is properly installed in the CI environment prior to test collection.
 
-## CI — Missing `starlette` Dependency Fix
-
-Branch: `fix/starlette-missing-dep` (merged into `main`)
-
-1. backend/requirements.dev.txt:
-   - Added `starlette>=0.27.0` as an explicit dev dependency.
-   - Root cause: `starlette` is a transitive dependency of `fastapi` and is always installed when `fastapi` is installed. However, on a clean CI environment the version resolution is not guaranteed — if pip's solver installs an older `fastapi` first and then resolves `starlette` separately, the version available may not export `testclient` in the expected location. Pinning `starlette>=0.27.0` directly in `requirements.dev.txt` ensures the correct version is installed before pytest collects tests.
-   - The CI workflow (`ci.yml`) installs `requirements.dev.txt` and then runs `pytest tests/`, so this file is the correct place for the fix — no workflow changes are needed.
+2. backend/tests/test_health.py:
+   - Reverted the `TestClient` import back to `from fastapi.testclient import TestClient` instead of `starlette.testclient`. `fastapi` bundles the test client appropriately, making this a more robust import path when `fastapi` is part of the core requirements.
 
