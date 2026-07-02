@@ -102,6 +102,7 @@ async def whatsapp_webhook(request: Request):
         )
         
         lower_msg = incoming_msg.lower()
+        num_media = int(form_data.get("NumMedia", "0"))
 
         if lower_msg == "cancel" and session_data:
             if r:
@@ -146,6 +147,57 @@ async def whatsapp_webhook(request: Request):
                 if r:
                     r.delete(session_key)
                 response_text = "Session invalid. Please start again."
+        elif num_media > 0:
+            # Handle media
+            media_url = form_data.get("MediaUrl0", "")
+            media_type = form_data.get("MediaContentType0", "")
+            
+            try:
+                import httpx
+                auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(media_url, auth=auth)
+                    resp.raise_for_status()
+                    media_bytes = resp.content
+
+                if media_type.startswith("audio/"):
+                    from services.gemini_service import get_gemini_service
+                    gemini = get_gemini_service()
+                    transcript = await gemini.transcribe_audio(media_bytes, mime_type=media_type)
+                    
+                    if transcript:
+                        analysis = await gemini.analyze_scam_text(transcript)
+                        risk_label = analysis.get("risk_label", "UNKNOWN")
+                        explanation = analysis.get("explanation", "")
+                        
+                        response_text = (
+                            f"🎤 *Audio Transcript:*\n_{transcript}_\n\n"
+                            f"🛡️ *Scam Analysis:*\n"
+                            f"Risk Level: {risk_label}\n"
+                            f"Analysis: {explanation}"
+                        )
+                    else:
+                        response_text = "Sorry, I couldn't understand the audio."
+
+                elif media_type.startswith("image/"):
+                    from services.gemini_service import get_gemini_service
+                    gemini = get_gemini_service()
+                    analysis = await gemini.analyze_currency_image(media_bytes, mime_type=media_type)
+                    verdict = analysis.get("verdict", "UNKNOWN")
+                    analysis_text = analysis.get("analysis", "")
+                    
+                    emoji = "🔴" if verdict.upper() == "FAKE" else "🟢" if verdict.upper() == "GENUINE" else "🟡"
+                    
+                    response_text = (
+                        f"{emoji} *Currency Analysis Verdict: {verdict.upper()}*\n\n"
+                        f"{analysis_text}"
+                    )
+                else:
+                    response_text = "We currently cannot process this type of media. Please describe your issue in text."
+                    
+            except Exception as e:
+                logger.error("whatsapp_media_processing_failed", error=str(e))
+                response_text = "Sorry, we encountered an error processing your media."
         elif not incoming_msg:
             # Empty message — send welcome
             response_text = (
@@ -198,85 +250,32 @@ async def whatsapp_webhook(request: Request):
             else:
                 response_text = "Usage: check [phone number]\nExample: check 9876543210"
         else:
-            # Handle media
-            num_media = int(form_data.get("NumMedia", "0"))
-            if num_media > 0:
-                media_url = form_data.get("MediaUrl0", "")
-                media_type = form_data.get("MediaContentType0", "")
+            # Route through CitizenService chat to maintain context and rate limits
+            try:
+                from services.citizen_service import get_citizen_service
+                citizen_svc = get_citizen_service()
                 
-                try:
-                    import httpx
-                    auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.get(media_url, auth=auth)
-                        resp.raise_for_status()
-                        media_bytes = resp.content
-
-                    if media_type.startswith("audio/"):
-                        from services.gemini_service import get_gemini_service
-                        gemini = get_gemini_service()
-                        transcript = await gemini.transcribe_audio(media_bytes, mime_type=media_type)
-                        
-                        if transcript:
-                            analysis = await gemini.analyze_scam_text(transcript)
-                            risk_label = analysis.get("risk_label", "UNKNOWN")
-                            explanation = analysis.get("explanation", "")
-                            
-                            response_text = (
-                                f"🎤 *Audio Transcript:*\n_{transcript}_\n\n"
-                                f"🛡️ *Scam Analysis:*\n"
-                                f"Risk Level: {risk_label}\n"
-                                f"Analysis: {explanation}"
-                            )
-                        else:
-                            response_text = "Sorry, I couldn't understand the audio."
-
-                    elif media_type.startswith("image/"):
-                        from services.gemini_service import get_gemini_service
-                        gemini = get_gemini_service()
-                        analysis = await gemini.analyze_currency_image(media_bytes, mime_type=media_type)
-                        verdict = analysis.get("verdict", "UNKNOWN")
-                        analysis_text = analysis.get("analysis", "")
-                        
-                        emoji = "🔴" if verdict.upper() == "FAKE" else "🟢" if verdict.upper() == "GENUINE" else "🟡"
-                        
-                        response_text = (
-                            f"{emoji} *Currency Analysis Verdict: {verdict.upper()}*\n\n"
-                            f"{analysis_text}"
-                        )
-                    else:
-                        response_text = "We currently cannot process this type of media. Please describe your issue in text."
-                        
-                except Exception as e:
-                    logger.error("whatsapp_media_processing_failed", error=str(e))
-                    response_text = "Sorry, we encountered an error processing your media."
-            else:
-                # Route through CitizenService chat to maintain context and rate limits
-                try:
-                    from services.citizen_service import get_citizen_service
-                    citizen_svc = get_citizen_service()
+                ip = request.client.host if request.client else "unknown"
+                result = await citizen_svc.chat(
+                    message=incoming_msg,
+                    session_id=f"wa_{from_number}",
+                    language="en",
+                    ip=ip
+                )
+                
+                response_text = result.get("response", "I'm sorry, I couldn't process that.")
+                
+                # Optionally append risk warning if HIGH
+                risk = result.get("risk_assessment")
+                if risk and risk.get("risk_level") == "HIGH":
+                    response_text += "\n\n🚨 WARNING: High risk of scam detected! Do NOT send money. Call 1930."
                     
-                    ip = request.client.host if request.client else "unknown"
-                    result = await citizen_svc.chat(
-                        message=incoming_msg,
-                        session_id=f"wa_{from_number}",
-                        language="en",
-                        ip=ip
-                    )
-                    
-                    response_text = result.get("response", "I'm sorry, I couldn't process that.")
-                    
-                    # Optionally append risk warning if HIGH
-                    risk = result.get("risk_assessment")
-                    if risk and risk.get("risk_level") == "HIGH":
-                        response_text += "\n\n🚨 WARNING: High risk of scam detected! Do NOT send money. Call 1930."
-                        
-                except Exception as e:
-                    logger.error("whatsapp_citizen_chat_failed", error=str(e))
-                    response_text = (
-                        "I couldn't process your message right now. "
-                        "If you're in danger, call 112 or the cybercrime helpline at 1930 immediately."
-                    )
+            except Exception as e:
+                logger.error("whatsapp_citizen_chat_failed", error=str(e))
+                response_text = (
+                    "I couldn't process your message right now. "
+                    "If you're in danger, call 112 or the cybercrime helpline at 1930 immediately."
+                )
 
         # Return TwiML response
         twiml = (

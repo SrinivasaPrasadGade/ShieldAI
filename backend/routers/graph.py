@@ -133,3 +133,9 @@ async def get_stats():
     service = get_graph_service()
     stats = service.get_stats()
     return stats
+
+@router.get("/recompute-status")
+async def get_recompute_status():
+    """Get the current graph recomputation status."""
+    service = get_graph_service()
+    return service.get_recompute_status()

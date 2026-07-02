@@ -64,3 +64,17 @@
    - Created ackend/tests/test_webhook.py to test the Twilio signature validation endpoint.
    - Added automated tests to ensure invalid signatures are blocked (HTTP 403), while valid signatures are accepted (HTTP 200).
    - Validated that placeholder credentials and debug mode gracefully log warnings without fully blocking requests.
+
+## Fraud Network Graph & Webhook Refinements
+
+1. Feature 7 (Fraud Network Graph - 100%):
+   - Replaced simple ring layout with a scalable force-directed cluster layout in `FraudNetworkGraph.jsx` using a custom physics simulation.
+   - Added a cluster selector dropdown and an entity search bar to filter nodes.
+   - Added interactive edge labels and relationship toggles to filter relationships.
+   - Exposed a graph recompute status endpoint in `graph.py` and `graph_service.py` to poll task progression.
+   - Improved phone and account entity normalization logic before nodes are added to the network.
+   - Implemented the "Export Investigation" evidence package generation logic and wired it to the UI.
+
+2. Feature 8 (Twilio Webhook Media Bug Fix):
+   - Fixed an issue in `webhook.py` where media messages with no text captions were ignored.
+   - Extracted `num_media` before evaluating message bodies to prioritize media payload processing.

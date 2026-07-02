@@ -89,6 +89,21 @@ export const api = {
     return res.data;
   },
 
+  getRecomputeStatus: async () => {
+    const res = await client.get('/api/graph/recompute-status');
+    return res.data;
+  },
+
+  startEvidencePackage: async (clusterId) => {
+    const res = await client.post(`/api/graph/evidence-package/${clusterId}`);
+    return res.data;
+  },
+
+  getEvidencePackageResult: async (taskId) => {
+    const res = await client.get(`/api/graph/evidence-package/result/${taskId}`);
+    return res.data;
+  },
+
   getGraphStats: async () => {
     const res = await client.get('/api/graph/stats');
     return res.data;

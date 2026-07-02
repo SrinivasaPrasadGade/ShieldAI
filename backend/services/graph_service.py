@@ -9,6 +9,7 @@ from typing import Optional, List
 from collections import deque
 import networkx as nx
 from community import community_louvain
+import re
 
 from logging_config import get_logger
 from models.database import get_sqlite_connection
@@ -349,6 +350,11 @@ class GraphService:
             for phone in phone_numbers:
                 if not phone:
                     continue
+                phone = re.sub(r'\D', '', phone)
+                if len(phone) > 10 and phone.startswith("91"):
+                    phone = phone[2:]
+                if not phone:
+                    continue
                 node_id = f"phone_{phone}"
                 conn.execute("""
                     INSERT OR IGNORE INTO entities (id, entity_type, value, risk_score, report_count)
@@ -379,6 +385,9 @@ class GraphService:
             
             # Add account number nodes + link to victim
             for account in account_numbers:
+                if not account:
+                    continue
+                account = re.sub(r'[^a-zA-Z0-9]', '', account).upper()
                 if not account:
                     continue
                 node_id = f"account_{account}"
@@ -417,7 +426,8 @@ class GraphService:
         else:
             try:
                 from tasks.graph_tasks import recompute_graph_clusters_task
-                recompute_graph_clusters_task.delay()
+                task_id = task_store.create_task("recompute_clusters")
+                recompute_graph_clusters_task.delay(task_id)
             except Exception as e:
                 logger.error("dispatch_graph_recompute_failed", error=str(e))
 
@@ -519,6 +529,16 @@ class GraphService:
             logger.info("graph_clusters_recomputed", total_nodes=len(G.nodes), total_clusters=len(cluster_groups))
         except Exception as e:
             logger.error("graph_clustering_failed", error=str(e))
+
+    def get_recompute_status(self) -> dict:
+        """Check if a recompute is active using task_store."""
+        with get_sqlite_connection() as conn:
+            row = conn.execute(
+                "SELECT status FROM async_tasks WHERE task_type = 'recompute_clusters' AND status IN ('pending', 'processing') LIMIT 1"
+            ).fetchone()
+            is_active = row is not None
+            return {"is_recomputing": is_active}
+
 
 
 # Module-level singleton
