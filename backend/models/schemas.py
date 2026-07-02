@@ -351,6 +351,18 @@ class GraphStatsResponse(BaseModel):
     highest_risk_cluster: Optional[ClusterSchema] = None
 
 
+class EvidencePackageRequest(BaseModel):
+    """Request body for POST /api/graph/evidence-package/{cluster_id}"""
+    officer_name: str = Field(..., min_length=1)
+    badge_number: str = Field(..., min_length=1)
+    department: str = Field(..., min_length=1)
+
+
+class EvidencePackageVerifyRequest(BaseModel):
+    """Request body for POST /api/graph/evidence-package/verify"""
+    evidence_package: Dict[str, Any] = Field(..., description="The parsed JSON evidence package to verify")
+
+
 # ── Geospatial ───────────────────────────────────────────────
 
 class GeoIncident(BaseModel):

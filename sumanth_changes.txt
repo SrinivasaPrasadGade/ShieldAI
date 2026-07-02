@@ -78,3 +78,14 @@
 2. Feature 8 (Twilio Webhook Media Bug Fix):
    - Fixed an issue in `webhook.py` where media messages with no text captions were ignored.
    - Extracted `num_media` before evaluating message bodies to prioritize media payload processing.
+
+## Evidence Package Enhancements
+
+1. Feature 9 (Evidence Package Enhancements - 100%):
+   - Implemented `reportlab` backend PDF generation mapping cluster entities to a formatted Forensic Intelligence Report.
+   - Mounted a `/static/` router in FastAPI to securely serve generated PDF and JSON exports.
+   - Refined `evidence_service.py` with expanded regex to redact SSNs and Credit Cards in linked fraud reports.
+   - Calculated SHA-256 source hashes for all entities and reports, adding them to the JSON's chain of custody metadata.
+   - Exposed a new `/api/graph/evidence-package/verify` endpoint to cryptographically verify HMAC signatures.
+   - Built a React Modal in `FraudNetworkGraph.jsx` to collect Officer Name, Badge, and Department prior to export.
+   - Upgraded the frontend UI to display "View PDF" and "Raw JSON" download buttons along with an integrity verification file-upload input.

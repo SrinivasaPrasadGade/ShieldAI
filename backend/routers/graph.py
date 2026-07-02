@@ -13,7 +13,6 @@ Endpoints:
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-
 from models.schemas import (
     GraphNetworkResponse,
     GraphNodeResponse,
@@ -21,6 +20,8 @@ from models.schemas import (
     GraphQueryResponse,
     GraphClustersResponse,
     GraphStatsResponse,
+    EvidencePackageRequest,
+    EvidencePackageVerifyRequest,
 )
 from services.graph_service import get_graph_service
 from services.evidence_service import get_evidence_service
@@ -92,7 +93,7 @@ async def get_clusters():
 
 
 @router.post("/evidence-package/{cluster_id}", status_code=202)
-async def start_evidence_package(cluster_id: int):
+async def start_evidence_package(cluster_id: int, request: EvidencePackageRequest):
     """
     Start async evidence package generation for a fraud cluster.
 
@@ -101,9 +102,17 @@ async def start_evidence_package(cluster_id: int):
     and key findings.
     """
     service = get_graph_service()
-    task_id = await service.start_evidence_package(cluster_id)
+    task_id = await service.start_evidence_package(cluster_id, officer_metadata=request.model_dump())
 
     return {"task_id": task_id}
+
+
+@router.post("/evidence-package/verify")
+async def verify_evidence_package(request: EvidencePackageVerifyRequest):
+    """Verify the digital signature of an evidence package."""
+    service = get_evidence_service()
+    is_valid = service.verify_signature(request.evidence_package)
+    return {"valid": is_valid}
 
 
 @router.get("/evidence-package/result/{task_id}")

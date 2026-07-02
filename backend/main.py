@@ -141,6 +141,13 @@ app.add_middleware(
 app.add_exception_handler(Exception, global_exception_handler)
 
 
+# ── Static Files ─────────────────────────────────────────────
+from fastapi.staticfiles import StaticFiles
+import os
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(os.path.join(static_dir, "evidence"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 # ── Include Routers ──────────────────────────────────────────
 from routers.scam import router as scam_router
 from routers.currency import router as currency_router

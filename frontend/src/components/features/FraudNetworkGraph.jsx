@@ -19,6 +19,11 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
   
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState(null);
+  
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [officerData, setOfficerData] = useState({ officer_name: '', badge_number: '', department: '' });
+  const [exportFiles, setExportFiles] = useState(null);
+  const [verifyStatus, setVerifyStatus] = useState(null);
 
   const graphWidth = 600;
   const graphHeight = 500;
@@ -161,39 +166,67 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
     }
   };
 
-  const handleExport = async () => {
+  const triggerExport = () => {
     if (!activeCluster) {
         alert("Please select a specific cluster to export.");
         return;
     }
+    setExportFiles(null);
+    setShowExportModal(true);
+  };
+
+  const handleExport = async (e) => {
+    e.preventDefault();
+    if (!activeCluster) return;
+    
+    setShowExportModal(false);
     setExporting(true);
+    setExportResult(null);
+    
     try {
-        const res = await api.startEvidencePackage(activeCluster);
+        const res = await api.startEvidencePackage(activeCluster, officerData);
         const taskId = res.task_id;
         
-        // Poll for result
         const poll = setInterval(async () => {
             try {
                 const statusRes = await api.getEvidencePackageResult(taskId);
                 if (statusRes.status === 'complete') {
                     clearInterval(poll);
                     setExporting(false);
-                    setExportResult(statusRes.result?.pdf_url || 'Export Complete');
-                    alert("Investigation export complete!");
+                    setExportFiles({
+                        pdf_url: statusRes.result?.pdf_url,
+                        json_url: statusRes.result?.json_url
+                    });
+                    setExportResult('Export Complete');
                 } else if (statusRes.status === 'failed') {
                     clearInterval(poll);
                     setExporting(false);
                     alert("Export failed: " + statusRes.error);
                 }
-            } catch (e) {
-                // ignore
-            }
+            } catch (e) {}
         }, 3000);
     } catch (e) {
         console.error(e);
         setExporting(false);
         alert("Failed to start export.");
     }
+  };
+
+  const handleVerify = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        const res = await api.verifyEvidencePackage(json);
+        setVerifyStatus(res.valid ? 'Valid Signature!' : 'Invalid/Tampered Signature!');
+      } catch (err) {
+        setVerifyStatus('Error reading or verifying file.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   const getNodeColor = (node) => {
@@ -249,7 +282,7 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
             </select>
 
             <button 
-                onClick={handleExport}
+                onClick={triggerExport}
                 disabled={exporting || !activeCluster}
                 className="glass-button"
                 style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}
@@ -442,6 +475,65 @@ export const FraudNetworkGraph = ({ selectedCluster = null }) => {
           )}
         </div>
       </div>
+      
+      {/* Export Modal */}
+      {showExportModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ width: '400px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h3 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><Download size={18} /> Export Evidence Package</h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Enter officer details for chain of custody tracking.</p>
+            
+            <form onSubmit={handleExport} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Officer Name</label>
+                <input required type="text" value={officerData.officer_name} onChange={(e) => setOfficerData({...officerData, officer_name: e.target.value})} style={{ width: '100%', padding: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Badge Number</label>
+                <input required type="text" value={officerData.badge_number} onChange={(e) => setOfficerData({...officerData, badge_number: e.target.value})} style={{ width: '100%', padding: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Department</label>
+                <input required type="text" value={officerData.department} onChange={(e) => setOfficerData({...officerData, department: e.target.value})} style={{ width: '100%', padding: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button type="button" onClick={() => setShowExportModal(false)} className="glass-button" style={{ background: 'transparent' }}>Cancel</button>
+                <button type="submit" className="glass-button" style={{ background: 'var(--accent-cyan)', color: '#000', fontWeight: 'bold' }}>Generate</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Export Results / Verify UI */}
+      {exportFiles && (
+        <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: 'var(--bg-secondary)', border: '1px solid var(--accent-cyan)', padding: '16px', borderRadius: '12px', zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.5)', width: '300px' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>Export Complete</h4>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            {exportFiles.pdf_url && (
+              <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${exportFiles.pdf_url}`} target="_blank" rel="noreferrer" className="glass-button" style={{ flex: 1, textAlign: 'center', background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.5)' }}>
+                View PDF
+              </a>
+            )}
+            {exportFiles.json_url && (
+              <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${exportFiles.json_url}`} download target="_blank" rel="noreferrer" className="glass-button" style={{ flex: 1, textAlign: 'center', background: 'rgba(50,255,50,0.2)', border: '1px solid rgba(50,255,50,0.5)' }}>
+                Raw JSON
+              </a>
+            )}
+          </div>
+          
+          <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '10px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verify Package Integrity:</span>
+            <input type="file" accept=".json" onChange={handleVerify} style={{ fontSize: '0.75rem', marginTop: '6px', width: '100%', color: 'var(--text-secondary)' }} />
+            {verifyStatus && (
+              <div style={{ marginTop: '8px', fontSize: '0.8rem', color: verifyStatus.includes('Valid') ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                {verifyStatus}
+              </div>
+            )}
+          </div>
+          <button onClick={() => setExportFiles(null)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>✖</button>
+        </div>
+      )}
     </div>
   );
 };

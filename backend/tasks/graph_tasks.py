@@ -3,11 +3,12 @@ from services.evidence_service import get_evidence_service
 from tasks.async_utils import run_async
 
 @app.task(name="tasks.graph_tasks.generate_evidence_task")
-def generate_evidence_task(cluster_id: int, task_id: str):
+def generate_evidence_task(cluster_id: int, task_id: str, officer_metadata: dict = None):
     evidence_svc = get_evidence_service()
     run_async(evidence_svc.generate_evidence_package(
         cluster_id=cluster_id,
-        task_id=task_id
+        task_id=task_id,
+        officer_metadata=officer_metadata
     ))
 
 @app.task(name="tasks.graph_tasks.recompute_graph_clusters_task")

@@ -19,7 +19,7 @@ logger = get_logger("shield_ai.evidence")
 class EvidenceService:
     """Generates evidence packages for fraud clusters."""
 
-    async def generate_evidence_package(self, cluster_id: int, task_id: str) -> None:
+    async def generate_evidence_package(self, cluster_id: int, task_id: str, officer_metadata: dict = None) -> None:
         """
         Generate a structured evidence package for a fraud cluster.
         Called as a background task.
@@ -97,6 +97,10 @@ class EvidenceService:
                             desc = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[REDACTED_EMAIL]', desc)
                             # Redact phone numbers (simple pattern)
                             desc = re.sub(r'\+?\d{10,12}', '[REDACTED_PHONE]', desc)
+                            # Redact SSNs
+                            desc = re.sub(r'\d{3}-\d{2}-\d{4}', '[REDACTED_SSN]', desc)
+                            # Redact Credit Cards (basic)
+                            desc = re.sub(r'\b(?:\d[ -]*?){13,16}\b', '[REDACTED_CC]', desc)
 
                             linked_reports.append({
                                 "id": rid,
@@ -179,12 +183,21 @@ class EvidenceService:
                 logger.error("evidence_synthesis_failed", error=str(e))
                 evidence["gemini_synthesis"] = "Failed to generate AI synthesis report."
 
+            import hashlib
+            source_hashes = {}
+            for e in entities:
+                source_hashes[e["id"]] = hashlib.sha256(json.dumps(e, sort_keys=True).encode()).hexdigest()
+            for r in linked_reports:
+                source_hashes[r["id"]] = hashlib.sha256(json.dumps(r, sort_keys=True).encode()).hexdigest()
+
             # 5.6 Add Chain of Custody and Digital Signature
             evidence["chain_of_custody"] = {
                 "generated_by": "ShieldAI System",
                 "timestamp": now,
                 "version": "1.0",
                 "hash_algorithm": "SHA-256",
+                "officer_metadata": officer_metadata or {},
+                "source_hashes": source_hashes,
             }
             
             import json, hashlib, hmac
@@ -195,7 +208,57 @@ class EvidenceService:
             
             evidence["digital_signature"] = signature
 
+            # 5.7 Generate PDF
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            import os
+            
+            static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "evidence")
+            os.makedirs(static_dir, exist_ok=True)
+            pdf_filename = f"{task_id}.pdf"
+            pdf_path = os.path.join(static_dir, pdf_filename)
+            
+            doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+            styles = getSampleStyleSheet()
+            flowables = []
+            
+            flowables.append(Paragraph(f"Forensic Intelligence Report", styles['Title']))
+            if officer_metadata:
+                flowables.append(Paragraph(f"Officer: {officer_metadata.get('officer_name', '')} (Badge: {officer_metadata.get('badge_number', '')})", styles['Normal']))
+                flowables.append(Paragraph(f"Department: {officer_metadata.get('department', '')}", styles['Normal']))
+            flowables.append(Spacer(1, 12))
+            
+            flowables.append(Paragraph(f"Cluster: {cluster.get('cluster_name', f'Cluster #{cluster['id']}')}", styles['Heading2']))
+            flowables.append(Paragraph(f"Risk Level: {cluster.get('risk_level', 'UNKNOWN')}", styles['Normal']))
+            flowables.append(Spacer(1, 12))
+            
+            flowables.append(Paragraph("Key Findings:", styles['Heading2']))
+            for finding in evidence.get("key_findings", []):
+                flowables.append(Paragraph(f"- {finding}", styles['Normal']))
+            flowables.append(Spacer(1, 12))
+            
+            if "gemini_synthesis" in evidence:
+                flowables.append(Paragraph("AI Synthesis:", styles['Heading2']))
+                for para in evidence["gemini_synthesis"].split('\n'):
+                    if para.strip():
+                        flowables.append(Paragraph(para.replace('<', '&lt;').replace('>', '&gt;'), styles['Normal']))
+                flowables.append(Spacer(1, 12))
+            
+            flowables.append(Paragraph(f"Digital Signature:", styles['Heading2']))
+            flowables.append(Paragraph(signature, styles['Normal']))
+            
+            doc.build(flowables)
+            
+            # 5.8 Generate JSON output
+            json_filename = f"{task_id}.json"
+            json_path = os.path.join(static_dir, json_filename)
+            with open(json_path, 'w') as f:
+                json.dump(evidence, f, indent=2)
+
             # 6. Store result
+            evidence["pdf_url"] = f"/static/evidence/{pdf_filename}"
+            evidence["json_url"] = f"/static/evidence/{json_filename}"
             task_store.update_task(task_id, status="complete", result=evidence)
 
             logger.info(
@@ -209,6 +272,25 @@ class EvidenceService:
         except Exception as e:
             logger.error("evidence_generation_failed", task_id=task_id, error=str(e))
             task_store.update_task(task_id, status="failed", error=str(e))
+
+    def verify_signature(self, evidence: dict) -> bool:
+        """
+        Verify the digital signature of an evidence package.
+        """
+        try:
+            signature = evidence.pop("digital_signature", None)
+            if not signature:
+                return False
+                
+            import json, hashlib, hmac
+            from config import settings
+            evidence_str = json.dumps(evidence, sort_keys=True)
+            secret = settings.SECRET_KEY.encode('utf-8')
+            expected_signature = hmac.new(secret, evidence_str.encode('utf-8'), hashlib.sha256).hexdigest()
+            
+            return hmac.compare_digest(expected_signature, signature)
+        except Exception:
+            return False
 
 
 # Module-level singleton

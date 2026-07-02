@@ -24,3 +24,4 @@ twilio==9.0.0
 networkx==3.0
 python-louvain==0.16
 pytest-asyncio==0.23.0
+reportlab==4.0.9

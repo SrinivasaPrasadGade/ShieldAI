@@ -94,8 +94,13 @@ export const api = {
     return res.data;
   },
 
-  startEvidencePackage: async (clusterId) => {
-    const res = await client.post(`/api/graph/evidence-package/${clusterId}`);
+  startEvidencePackage: async (clusterId, officerMetadata = { officer_name: "System", badge_number: "000", department: "HQ" }) => {
+    const res = await client.post(`/api/graph/evidence-package/${clusterId}`, officerMetadata);
+    return res.data;
+  },
+
+  verifyEvidencePackage: async (evidencePackage) => {
+    const res = await client.post(`/api/graph/evidence-package/verify`, { evidence_package: evidencePackage });
     return res.data;
   },
 
