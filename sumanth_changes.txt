@@ -43,3 +43,12 @@
    - Intercepted rate-limit API errors to display a visual warning banner when messaging too quickly.
    - Passed `source="chat"` when reports are created from the chat to track `chat_conversions` in Firestore system stats.
    - Updated Gemini prompt to override the language dropdown and forcefully reply in the language the user types in.
+
+## WhatsApp Media Handling
+
+1. Feature 4 (WhatsApp Twilio Webhook):
+   - Updated ackend/routers/webhook.py to process WhatsApp voice notes and images.
+   - Added httpx to download media securely from Twilio when NumMedia > 0.
+   - Wired audio inputs to GeminiService.transcribe_audio and passed the transcription to GeminiService.analyze_scam_text for fraud scoring.
+   - Wired image inputs to GeminiService.analyze_currency_image for detecting counterfeit currency.
+   - Formatted AI analysis verdicts into standard Twilio TwiML responses with appropriate emoji indicators.
