@@ -69,6 +69,11 @@ async def whatsapp_webhook(request: Request):
         to_number = form_data.get("To", "")
         message_sid = form_data.get("MessageSid", "")
 
+        import json
+        r = None
+        session_key = f"whatsapp_session:{from_number}"
+        session_data = None
+
         if message_sid:
             try:
                 import redis
@@ -78,14 +83,70 @@ async def whatsapp_webhook(request: Request):
                     return Response(content="", media_type="application/xml")
             except Exception as e:
                 logger.warning("twilio_idempotency_check_failed", error=str(e))
+                r = None
+
+        try:
+            if not r:
+                import redis
+                r = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+            raw_session = r.get(session_key)
+            if raw_session:
+                session_data = json.loads(raw_session)
+        except Exception as e:
+            logger.warning("whatsapp_session_load_failed", error=str(e))
 
         logger.info(
             "whatsapp_message_received",
             from_number=from_number[-4:] if from_number else "unknown",
             message_length=len(incoming_msg),
         )
+        
+        lower_msg = incoming_msg.lower()
 
-        if not incoming_msg:
+        if lower_msg == "cancel" and session_data:
+            if r:
+                r.delete(session_key)
+            response_text = "Report filing cancelled. How else can I help you?"
+        elif session_data:
+            step = session_data.get("step")
+            if step == "description":
+                session_data["data"]["description"] = incoming_msg
+                session_data["step"] = "phone"
+                if r:
+                    r.set(session_key, json.dumps(session_data), ex=3600)
+                response_text = "2/3: Any phone numbers involved? (Reply 'none' if none, or type 'cancel' to abort)"
+            elif step == "phone":
+                session_data["data"]["phone_number"] = None if lower_msg == "none" else incoming_msg
+                session_data["step"] = "location"
+                if r:
+                    r.set(session_key, json.dumps(session_data), ex=3600)
+                response_text = "3/3: Your location? (Reply 'none' if none, or type 'cancel' to abort)"
+            elif step == "location":
+                session_data["data"]["location"] = None if lower_msg == "none" else incoming_msg
+                
+                # File the report
+                try:
+                    from services.citizen_service import get_citizen_service
+                    citizen_svc = get_citizen_service()
+                    report = await citizen_svc.create_report(
+                        description=session_data["data"].get("description", ""),
+                        phone_number=session_data["data"].get("phone_number"),
+                        location=session_data["data"].get("location"),
+                        source="whatsapp"
+                    )
+                    ref_num = report.get("reference_number", "UNKNOWN")
+                    response_text = f"✅ Your report has been filed successfully.\n\nReference Number: *{ref_num}*\n\nPlease keep this safe. You can contact cybercrime at 1930 for immediate help."
+                except Exception as e:
+                    logger.error("whatsapp_report_creation_failed", error=str(e))
+                    response_text = "Sorry, an error occurred while filing your report. Please try again later."
+                
+                if r:
+                    r.delete(session_key)
+            else:
+                if r:
+                    r.delete(session_key)
+                response_text = "Session invalid. Please start again."
+        elif not incoming_msg:
             # Empty message — send welcome
             response_text = (
                 "🛡️ Welcome to ShieldAI Fraud Shield!\n\n"
@@ -94,7 +155,7 @@ async def whatsapp_webhook(request: Request):
                 "Type 'report' to file a fraud complaint.\n"
                 "Type 'help' for more options."
             )
-        elif incoming_msg.lower() in ("help", "menu", "options"):
+        elif lower_msg in ("help", "menu", "options"):
             response_text = (
                 "🛡️ *ShieldAI Commands:*\n\n"
                 "📝 *Describe a scam* — Just type what happened\n"
@@ -103,15 +164,14 @@ async def whatsapp_webhook(request: Request):
                 "ℹ️ *help* — Show this menu\n\n"
                 "🚨 *Emergency?* Call 112 or cybercrime helpline 1930"
             )
-        elif incoming_msg.lower().startswith("report"):
+        elif lower_msg.startswith("report"):
+            # Start report flow
+            if r:
+                r.set(session_key, json.dumps({"step": "description", "data": {}}), ex=3600)
             response_text = (
                 "📋 *Filing a Fraud Report*\n\n"
-                "Please provide the following details:\n"
-                "1. What happened (describe the incident)\n"
-                "2. Any phone numbers involved\n"
-                "3. Your location\n\n"
-                "Or visit: cybercrime.gov.in\n"
-                "Helpline: 1930"
+                "1/3: What happened? Please describe the incident in detail "
+                "(or type 'cancel' to abort):"
             )
         elif incoming_msg.lower().startswith("check"):
             # Phone number risk check
