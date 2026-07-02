@@ -68,6 +68,25 @@ def fetch_recent_alerts():
         logger.error(f"Error fetching historical alerts: {e}")
         return []
 
+def _process_alert_message(message):
+    """Process a single Redis pub/sub message and emit SocketIO events.
+    
+    Extracted from the listener loop for testability.
+    """
+    if message["type"] != "message":
+        return
+    
+    alert = json.loads(message["data"])
+    severity = alert.get("severity", "MEDIUM")
+    logger.info(f"New alert received from Redis pub/sub: {alert.get('id')} ({severity})")
+    
+    # Critical and High alerts go specifically to law enforcement room
+    if severity in ["CRITICAL", "HIGH"]:
+        socketio.emit("new_alert", alert, to="law_enforcement")
+    
+    # All alerts go to the general feed
+    socketio.emit("alert_feed_update", alert, to="law_enforcement")
+
 def listen_for_alerts_with_retry():
     """Self-healing background thread to listen to Redis pub/sub for new alerts"""
     backoff = 1.0
@@ -81,20 +100,10 @@ def listen_for_alerts_with_retry():
             backoff = 1.0  # Reset backoff on success
             
             for message in pubsub.listen():
-                if message["type"] == "message":
-                    try:
-                        alert = json.loads(message["data"])
-                        severity = alert.get("severity", "MEDIUM")
-                        logger.info(f"New alert received from Redis pub/sub: {alert.get('id')} ({severity})")
-                        
-                        # Critical and High alerts go specifically to law enforcement room
-                        if severity in ["CRITICAL", "HIGH"]:
-                            socketio.emit("new_alert", alert, to="law_enforcement")
-                        
-                        # All alerts go to the general feed
-                        socketio.emit("alert_feed_update", alert, to="law_enforcement")
-                    except Exception as parse_err:
-                        logger.error(f"Error parsing alert message: {parse_err}")
+                try:
+                    _process_alert_message(message)
+                except Exception as parse_err:
+                    logger.error(f"Error parsing alert message: {parse_err}")
                         
         except (redis.ConnectionError, redis.TimeoutError) as conn_err:
             logger.warning(f"Redis connection error: {conn_err}. Reconnecting in {backoff}s...")
