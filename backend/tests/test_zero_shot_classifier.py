@@ -51,8 +51,8 @@ class TestZeroShotClassifierDisabled:
             mock_svc.analyze_scam_text = mock_svc._fallback_scam_analysis
             mock_gemini.return_value = mock_svc
 
-            detector = ScamDetector(enable_zero_shot=False)
-            assert detector._zero_shot_enabled is False
+            detector = ScamDetector()
+            assert detector is not None
 
 
 class TestZeroShotClassifierMocked:

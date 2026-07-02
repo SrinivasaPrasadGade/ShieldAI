@@ -149,7 +149,7 @@ async def test_scam_detector_analyze_audio_full_pipeline():
     })
 
     with patch("services.scam_detector.get_gemini_service", return_value=mock_gemini):
-        detector = ScamDetector(enable_zero_shot=False)
+        detector = ScamDetector()
         result = await detector.analyze_audio(b"\x00" * 512, mime_type="audio/mpeg")
 
     assert "transcript" in result
@@ -177,7 +177,7 @@ async def test_scam_detector_analyze_audio_low_risk():
     })
 
     with patch("services.scam_detector.get_gemini_service", return_value=mock_gemini):
-        detector = ScamDetector(enable_zero_shot=False)
+        detector = ScamDetector()
         result = await detector.analyze_audio(b"\x00" * 512, mime_type="audio/wav")
 
     assert result["risk_label"] == "LOW"
@@ -197,7 +197,7 @@ async def test_scam_detector_analyze_audio_propagates_error():
     )
 
     with patch("services.scam_detector.get_gemini_service", return_value=mock_gemini):
-        detector = ScamDetector(enable_zero_shot=False)
+        detector = ScamDetector()
         with pytest.raises(RuntimeError, match="Audio transcription failed"):
             await detector.analyze_audio(b"\x00" * 512)
 
