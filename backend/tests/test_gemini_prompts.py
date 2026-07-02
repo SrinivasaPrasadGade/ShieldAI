@@ -16,6 +16,25 @@ def test_prompt_constants():
     assert "citizen fraud shield" in CITIZEN_SHIELD_SYSTEM_PROMPT.lower()
     assert "magistrate" in EVIDENCE_PACKAGE_PROMPT.lower() or "forensic" in EVIDENCE_PACKAGE_PROMPT.lower()
 
+
+def test_fallback_scam_analysis_detects_common_ci_scam_patterns():
+    """Verify offline fallback catches common utility and OTP scam wording."""
+    svc = GeminiService(api_key="")
+
+    utility = svc._fallback_scam_analysis(
+        "Your electricity bill for the last month is pending. "
+        "Your power will be cut off tonight by 9 PM. Call this number to pay."
+    )
+    assert utility["risk_label"] in {"MEDIUM", "HIGH"}
+    assert utility["classification"] == "utility_scam"
+
+    otp = svc._fallback_scam_analysis(
+        "This is customer support. Your bank account is blocked due to suspicious activity. "
+        "Share your OTP to unblock."
+    )
+    assert otp["risk_label"] in {"MEDIUM", "HIGH"}
+    assert otp["classification"] == "phishing"
+
 @pytest.mark.asyncio
 async def test_evidence_synthesis_fallback():
     """Verify evidence package generation fallback behavior when Gemini is offline."""

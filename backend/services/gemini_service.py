@@ -317,11 +317,15 @@ class GeminiService:
             "narcotics": 0.25, "drug trafficking": 0.25,
             "transfer money": 0.30, "send money immediately": 0.35,
             "your aadhaar": 0.20, "your pan card": 0.20,
-            "account will be blocked": 0.25, "account frozen": 0.25,
+            "account will be blocked": 0.25, "account is blocked": 0.25,
+            "account blocked": 0.20, "account frozen": 0.25,
             "police case": 0.20, "fir registered": 0.20,
             "video call verification": 0.25, "kyc expired": 0.25,
             "rbi circular": 0.20, "trai": 0.20,
             "sim will be blocked": 0.25, "legal action": 0.20,
+            "share your otp": 0.35, "otp to unblock": 0.35,
+            "power will be cut off": 0.35, "electricity will be cut": 0.35,
+            "electricity bill": 0.25,
         }
 
         medium_risk_keywords = {
@@ -330,6 +334,10 @@ class GeminiService:
             "lottery": 0.20, "congratulations you won": 0.20,
             "investment opportunity": 0.15, "guaranteed returns": 0.20,
             "bank manager": 0.10, "insurance claim": 0.10,
+            "suspicious activity": 0.15, "unblock": 0.15,
+            "pending": 0.10, "call this number": 0.15,
+            "to pay": 0.10, "telegram group": 0.15,
+            "working from home": 0.15,
         }
 
         score = 0.0
@@ -363,6 +371,15 @@ class GeminiService:
         elif any(k in text_lower for k in ["investment", "guaranteed returns", "trading"]):
             classification = "investment_scam"
             scam_type = "Investment Fraud"
+        elif any(k in text_lower for k in ["electricity bill", "power will be cut off", "electricity will be cut"]):
+            classification = "utility_scam"
+            scam_type = "Utility Payment Scam"
+        elif any(k in text_lower for k in ["otp", "account is blocked", "account blocked", "unblock"]):
+            classification = "phishing"
+            scam_type = "Phishing/OTP Fraud"
+        elif any(k in text_lower for k in ["telegram group", "working from home", "earn"]):
+            classification = "job_scam"
+            scam_type = "Job/Task Scam"
         elif score > 0.3:
             classification = "financial_fraud"
             scam_type = "General Financial Fraud"

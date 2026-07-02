@@ -79,6 +79,20 @@ def test_fusion_disagreement():
     assert result.risk_label == "MEDIUM"
 
 
+def test_fusion_low_score_disagreement_stays_low():
+    fusion = RiskFusionService()
+    gemini = {"risk_score": 0.0, "risk_label": "LOW"}
+    zs = {
+        "top_label": "normal personal conversation",
+        "all_scores": {"legitimate conversation": 0.41},  # ZS risk: 0.59
+    }
+
+    result = fusion.fuse(gemini_result=gemini, zero_shot_result=zs)
+    assert result.fusion_method == "disagreement_review"
+    assert result.risk_score == 0.177
+    assert result.risk_label == "LOW"
+
+
 def test_fusion_no_models_available():
     fusion = RiskFusionService()
     result = fusion.fuse(gemini_result=None, zero_shot_result=None)

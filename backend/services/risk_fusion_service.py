@@ -146,13 +146,14 @@ class RiskFusionService:
         # Rule 6: Strong disagreement → label as MEDIUM / REVIEW
         if gap >= self.DISAGREEMENT_GAP:
             score = round((gemini_score * 0.7) + (zs_score * 0.3), 3)
+            label = self._score_to_label(score)
             return FusedRiskResult(
                 risk_score=score,
-                risk_label="MEDIUM",
+                risk_label=label,
                 explanation=(
                     f"Models disagree significantly (gap {gap:.2f}): "
                     f"Gemini ({gemini_class}, {gemini_score:.2f}) vs "
-                    f"zero-shot ('{zs_label}', {zs_score:.2f}). Flagged for review."
+                    f"zero-shot ('{zs_label}', {zs_score:.2f}). Final label follows the blended risk score."
                 ),
                 fusion_method="disagreement_review",
                 gemini=gemini_result,
