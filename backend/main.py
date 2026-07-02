@@ -72,9 +72,12 @@ async def lifespan(app: FastAPI):
     # 6. Initialize zero-shot classifier (may take 30-60s on first run for model download)
     if settings.ENABLE_ZERO_SHOT:
         logger.info("zero_shot_init_starting", message="This may take a moment on first run...")
-        from services.scam_detector import init_scam_detector
-        # Pre-load the ScamDetector (and zero-shot classifier if enabled) during startup so it doesn't block the first request
-        init_scam_detector(enable_zero_shot=settings.ENABLE_ZERO_SHOT, zero_shot_model=settings.ZERO_SHOT_MODEL)
+        from services.zero_shot_classifier import init_zero_shot_classifier
+        init_zero_shot_classifier(model_name=settings.ZERO_SHOT_MODEL)
+        
+    # 7. Initialize ScamDetector
+    from services.scam_detector import init_scam_detector
+    init_scam_detector()
 
     logger.info(
         "server_ready",

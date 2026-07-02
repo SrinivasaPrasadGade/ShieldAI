@@ -16,26 +16,7 @@ from services.gemini_service import get_gemini_service
 
 logger = get_logger("shield_ai.scam_detector")
 
-# We no longer import transformers here directly; it is handled by the zero_shot_classifier service.
-try:
-    import transformers
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
 
-
-
-# Scam classification candidate labels for zero-shot
-SCAM_LABELS = [
-    "digital arrest scam",
-    "financial fraud",
-    "KYC fraud",
-    "customs scam",
-    "impersonation scam",
-    "lottery or prize scam",
-    "investment fraud",
-    "legitimate conversation",
-]
 
 
 class ScamDetector:
@@ -44,63 +25,10 @@ class ScamDetector:
     Merges scores from both models for a composite risk assessment.
     """
 
-    def __init__(self, enable_zero_shot: bool = False, zero_shot_model: str = "facebook/bart-large-mnli"):
+    def __init__(self):
         self.gemini = get_gemini_service()
-        self._zero_shot_pipeline = None
-        self._zero_shot_enabled = enable_zero_shot and TRANSFORMERS_AVAILABLE
-        self._zero_shot_model_name = zero_shot_model
 
-        if self._zero_shot_enabled:
-            self._init_zero_shot()
 
-    def _init_zero_shot(self):
-        """Lazy-load the zero-shot classification pipeline (BART-MNLI)."""
-        try:
-            from transformers import pipeline as hf_pipeline
-            logger.info("zero_shot_loading", model=self._zero_shot_model_name)
-            self._zero_shot_pipeline = hf_pipeline(
-                "zero-shot-classification",
-                model=self._zero_shot_model_name,
-                device=-1,  # CPU; use 0 for GPU
-            )
-            logger.info("zero_shot_loaded", model=self._zero_shot_model_name)
-        except Exception as e:
-            logger.error("zero_shot_load_failed", error=str(e))
-            self._zero_shot_pipeline = None
-            self._zero_shot_enabled = False
-
-    def zero_shot_classify(self, text: str) -> Optional[dict]:
-        """
-        Run zero-shot classification on text using BART-MNLI.
-
-        Returns:
-            dict with label scores, or None if the classifier is unavailable.
-        """
-        if not self._zero_shot_pipeline:
-            return None
-
-        try:
-            result = self._zero_shot_pipeline(
-                text[:512],  # Token limit consideration for BART
-                candidate_labels=SCAM_LABELS,
-                multi_label=False,
-            )
-            # Build label → score mapping
-            scores = dict(zip(result["labels"], result["scores"]))
-            # Get the top label
-            top_label = result["labels"][0]
-            top_score = result["scores"][0]
-
-            logger.debug("zero_shot_classification", top_label=top_label, top_score=round(top_score, 3))
-
-            return {
-                "top_label": top_label,
-                "top_score": top_score,
-                "all_scores": {k: round(v, 4) for k, v in scores.items()},
-            }
-        except Exception as e:
-            logger.error("zero_shot_classify_failed", error=str(e))
-            return None
 
     async def analyze_text(
         self,
@@ -121,33 +49,26 @@ class ScamDetector:
         """
         # 1. Gemini analysis (primary signal)
         gemini_result = await self.gemini.analyze_scam_text(text, language)
-        gemini_score = gemini_result.get("risk_score", 0.0)
 
-        # 2. Zero-shot classification (secondary signal)
-        zero_shot_result = await asyncio.to_thread(self.zero_shot_classify, text) if self._zero_shot_pipeline else None
-        zero_shot_score = 0.0
+        # 2. Zero-shot classification
+        from services.zero_shot_classifier import get_zero_shot_classifier
+        zs_classifier = get_zero_shot_classifier()
+        
+        zero_shot_result = None
+        if zs_classifier and zs_classifier.is_available:
+            zs_obj = await asyncio.to_thread(zs_classifier.classify, text, language)
+            if zs_obj:
+                from dataclasses import asdict
+                zero_shot_result = asdict(zs_obj)
 
-        if zero_shot_result:
-            # Convert zero-shot top score to risk score
-            # "legitimate conversation" is the non-scam label
-            legit_score = zero_shot_result["all_scores"].get("legitimate conversation", 0.0)
-            zero_shot_score = 1.0 - legit_score  # Invert: high legit = low risk
-
-        # 3. Score fusion: weighted average (Gemini 0.7, zero-shot 0.3)
-        if zero_shot_result:
-            fused_score = (gemini_score * 0.7) + (zero_shot_score * 0.3)
-        else:
-            fused_score = gemini_score
-
-        fused_score = round(min(1.0, max(0.0, fused_score)), 3)
-
-        # 4. Derive risk label from fused score
-        if fused_score >= 0.7:
-            risk_label = "HIGH"
-        elif fused_score >= 0.4:
-            risk_label = "MEDIUM"
-        else:
-            risk_label = "LOW"
+        # 3. Risk Fusion
+        from services.risk_fusion_service import get_risk_fusion_service
+        fusion_svc = get_risk_fusion_service()
+        fused_result = fusion_svc.fuse(gemini_result, zero_shot_result)
+        
+        fused_score = fused_result.risk_score
+        risk_label = fused_result.risk_label
+        explanation = fused_result.explanation
 
         # 5. Generate alert if HIGH risk
         alert_id = None
@@ -197,7 +118,7 @@ class ScamDetector:
             "risk_label": risk_label,
             "classification": gemini_result.get("classification", "unknown"),
             "scam_type": gemini_result.get("scam_type"),
-            "explanation": gemini_result.get("explanation", "Analysis complete."),
+            "explanation": explanation,
             "recommended_action": gemini_result.get("recommended_action", "Stay vigilant."),
             "alert_id": alert_id,
         }
@@ -208,7 +129,7 @@ class ScamDetector:
             risk_label=risk_label,
             classification=result["classification"],
             gemini_available=self.gemini.is_available,
-            zero_shot_available=self._zero_shot_enabled,
+            zero_shot_available=bool(zero_shot_result),
         )
 
         return result
@@ -333,16 +254,12 @@ def get_scam_detector() -> ScamDetector:
     """Get the initialized ScamDetector singleton."""
     global _scam_detector
     if _scam_detector is None:
-        from config import settings
-        _scam_detector = ScamDetector(
-            enable_zero_shot=settings.ENABLE_ZERO_SHOT,
-            zero_shot_model=settings.ZERO_SHOT_MODEL,
-        )
+        _scam_detector = ScamDetector()
     return _scam_detector
 
 
-def init_scam_detector(enable_zero_shot: bool = False, zero_shot_model: str = "facebook/bart-large-mnli") -> ScamDetector:
+def init_scam_detector() -> ScamDetector:
     """Initialize the ScamDetector singleton."""
     global _scam_detector
-    _scam_detector = ScamDetector(enable_zero_shot=enable_zero_shot, zero_shot_model=zero_shot_model)
+    _scam_detector = ScamDetector()
     return _scam_detector
