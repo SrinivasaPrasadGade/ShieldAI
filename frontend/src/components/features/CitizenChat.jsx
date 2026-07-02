@@ -1,6 +1,6 @@
 // frontend/src/components/features/CitizenChat.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ShieldAlert, Languages, AlertTriangle, ArrowRight, User, Bot, HelpCircle } from 'lucide-react';
+import { Send, ShieldAlert, Languages, AlertTriangle, ArrowRight, User, Bot, HelpCircle, FileText, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 
 export const CitizenChat = () => {
@@ -14,6 +14,10 @@ export const CitizenChat = () => {
   ]);
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState('en');
+  const [reportingMsgIndex, setReportingMsgIndex] = useState(null);
+  const [reportForm, setReportForm] = useState({ phone: '', location: '', email: '' });
+  const [reportResult, setReportResult] = useState(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [sessionId] = useState(() => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return `sess-${crypto.randomUUID()}`;
@@ -59,7 +63,9 @@ export const CitizenChat = () => {
       const newResponse = {
         role: 'assistant',
         text: data.response,
-        risk: data.risk_assessment
+        risk: data.risk_assessment,
+        report_link: data.report_link,
+        original_user_text: userText
       };
       
       setChatHistory((prev) => [...prev, newResponse]);
@@ -79,6 +85,26 @@ export const CitizenChat = () => {
 
   const handleDemoClick = (text) => {
     setMessage(text);
+  };
+
+  const handleReportSubmit = async (e, description, msgIndex) => {
+    e.preventDefault();
+    setIsSubmittingReport(true);
+    try {
+      const result = await api.submitReport(
+        description,
+        reportForm.phone,
+        reportForm.location,
+        reportForm.email
+      );
+      setReportResult({ ...result, msgIndex });
+      setReportingMsgIndex(null);
+    } catch (error) {
+      console.error("Failed to submit report:", error);
+      alert("Failed to submit report. Please try again.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
   };
 
   return (
@@ -152,9 +178,58 @@ export const CitizenChat = () => {
                       <AlertTriangle size={16} />
                       WARNING: CONFIRMED {msg.risk.fraud_type?.replace('_', ' ').toUpperCase()} SCAM
                     </div>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                       Severity: <strong>{msg.risk.risk_level}</strong> (Confidence: {Math.round(msg.risk.confidence * 100)}%)
                     </p>
+                    
+                    {msg.report_link && !reportResult?.msgIndex && reportingMsgIndex !== i && (
+                      <button 
+                        onClick={() => setReportingMsgIndex(i)}
+                        style={{
+                          background: 'var(--accent-red)',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        <FileText size={14} /> Report Incident to Cyber Cell
+                      </button>
+                    )}
+
+                    {reportingMsgIndex === i && (
+                      <form onSubmit={(e) => handleReportSubmit(e, msg.original_user_text || "Scam reported", i)} style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>File Official Report</h4>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>Provide optional details to help authorities track this scammer.</p>
+                        <input type="text" placeholder="Scammer's Phone (Optional)" value={reportForm.phone} onChange={e => setReportForm({...reportForm, phone: e.target.value})} style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--border-glass)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.8rem' }} />
+                        <input type="text" placeholder="Your City/Location (Optional)" value={reportForm.location} onChange={e => setReportForm({...reportForm, location: e.target.value})} style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--border-glass)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.8rem' }} />
+                        <input type="email" placeholder="Your Email (Optional)" value={reportForm.email} onChange={e => setReportForm({...reportForm, email: e.target.value})} style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--border-glass)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.8rem' }} />
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                          <button type="submit" disabled={isSubmittingReport} style={{ flex: 1, background: 'var(--accent-red)', color: '#fff', border: 'none', padding: '8px', borderRadius: '4px', fontSize: '0.8rem', cursor: isSubmittingReport ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+                            {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
+                          </button>
+                          <button type="button" onClick={() => setReportingMsgIndex(null)} style={{ padding: '8px 12px', background: 'transparent', border: '1px solid var(--border-glass)', color: 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Cancel</button>
+                        </div>
+                      </form>
+                    )}
+
+                    {reportResult?.msgIndex === i && (
+                      <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '8px' }}>
+                          <CheckCircle2 size={16} /> Report Submitted Successfully
+                        </div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Reference: <strong>{reportResult.reference_number}</strong></p>
+                        <ul style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: '16px' }}>
+                          {reportResult.next_steps.slice(0, 3).map((step, idx) => <li key={idx}>{step}</li>)}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
