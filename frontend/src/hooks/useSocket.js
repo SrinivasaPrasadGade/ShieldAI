@@ -37,12 +37,18 @@ export const useSocket = (role = 'law_enforcement') => {
     });
 
     socket.on('new_alert', (alert) => {
-      setAlerts((prev) => [alert, ...prev].slice(0, 500));
+      setAlerts((prev) => {
+        if (prev.some(a => a.id === alert.id)) return prev;
+        return [alert, ...prev].slice(0, 500);
+      });
       setLatestToast({ ...alert, _ts: Date.now() });
     });
 
     socket.on('alert_feed_update', (alert) => {
-      setFeed((prev) => [alert, ...prev].slice(0, 500));
+      setFeed((prev) => {
+        if (prev.some(a => a.id === alert.id)) return prev;
+        return [alert, ...prev].slice(0, 500);
+      });
     });
 
     return () => {
@@ -52,6 +58,11 @@ export const useSocket = (role = 'law_enforcement') => {
     };
   }, [role]);
 
+  const markAsReadLocally = (alertId) => {
+    setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, is_read: true } : a));
+    setFeed(prev => prev.map(a => a.id === alertId ? { ...a, is_read: true } : a));
+  };
+
   return {
     socket: socketRef.current,
     connected,
@@ -59,6 +70,7 @@ export const useSocket = (role = 'law_enforcement') => {
     feed,
     latestToast,
     setLatestToast,
+    markAsReadLocally,
   };
 };
 export default useSocket;

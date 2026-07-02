@@ -1,0 +1,26 @@
+# sumanth
+
+## Frontend Authentication Plumbing
+
+1. Top Cross-Cutting Priority 1 (Frontend Authentication):
+   - Added Firebase initialization in `frontend/src/services/firebase.js`.
+   - Created `useAuth.jsx` hook to handle Firebase token fetching, caching, and state management.
+   - Built a premium dark-themed `Login.jsx` interface.
+   - Updated `api.js` Axios interceptor to append the `Bearer` token to all backend requests.
+   - Updated `useSocket.js` to attach the auth token when connecting to Socket.IO.
+   
+## ScamDetector Architecture & Risk Fusion Wiring
+
+1. Top Cross-Cutting Priority 2 (Wire Services into ScamDetector):
+   - Decoupled Zero-Shot classification by initializing the `ZeroShotScamClassifier` singleton in the `main.py` startup sequence, avoiding blocking latency on first requests.
+   - Refactored `backend/services/scam_detector.py` to remove inline HuggingFace model loading and simplified its constructor.
+   - Rewired `analyze_text()` to use `asyncio.to_thread` for the zero-shot inference.
+   - Replaced simplistic 70/30 weighting with robust, explainable rule-based scoring by piping Gemini and Zero-Shot outputs through `RiskFusionService.fuse()`.
+
+## Realtime Alert Feed Enhancements
+
+1. Feature 1 (Realtime Alert Feed - 85% to 100%):
+   - Added `POST /api/scam/alerts/{alert_id}/read` to `backend/routers/scam.py` for persistent read-state tracking via `AlertService`.
+   - Updated `frontend/src/services/api.js` with a `markAlertRead` client function.
+   - Added deduplication logic to `useSocket.js` using alert `id`s to prevent stacked alerts on disconnects/reconnects.
+   - Improved `AlertFeed.jsx` by adding interactive filters (Severity, Type), a live connection banner reflecting socket status, and a "Mark as Read" checkmark workflow with local state optimistic updates.

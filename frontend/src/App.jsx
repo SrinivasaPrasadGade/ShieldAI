@@ -48,7 +48,7 @@ function App() {
   const { user, loading } = useAuth();
   const isAuthenticated = !!user;
 
-  const { feed, connected, latestToast } = useSocket('law_enforcement');
+  const { feed, connected, latestToast, markAsReadLocally } = useSocket('law_enforcement');
 
   // Trigger real-time toast notifications
   useEffect(() => {
@@ -151,7 +151,9 @@ function App() {
                 <AlertFeed 
                   alerts={feed} 
                   onAlertClick={handleAlertClick} 
-                  activeAlertId={activeAlert?.id} 
+                  activeAlertId={activeAlert?.id}
+                  isRealtimeConnected={connected}
+                  markAsReadLocally={markAsReadLocally}
                 />
               </div>
 

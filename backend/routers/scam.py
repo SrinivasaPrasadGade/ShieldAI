@@ -99,6 +99,19 @@ async def get_alerts(
     return result
 
 
+@router.post("/alerts/{alert_id}/read")
+async def mark_alert_read(alert_id: str):
+    """
+    Mark a specific alert as read.
+    """
+    from services.alert_service import get_alert_service
+    svc = get_alert_service()
+    success = await svc.mark_read(alert_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Alert not found or could not be updated")
+    return {"success": True}
+
+
 @router.get("/stats", response_model=ScamStatsResponse)
 async def get_stats(
     days: int = Query(7, ge=1, le=365, description="Number of days to look back"),

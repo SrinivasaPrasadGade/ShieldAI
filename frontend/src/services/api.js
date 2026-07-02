@@ -46,6 +46,11 @@ export const api = {
     return res.data;
   },
 
+  markAlertRead: async (alertId) => {
+    const res = await client.post(`/api/scam/alerts/${alertId}/read`);
+    return res.data;
+  },
+
   // Currency Verification
   verifyCurrency: async (imageFile, denomination = null) => {
     const formData = new FormData();
