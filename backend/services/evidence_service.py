@@ -229,7 +229,8 @@ class EvidenceService:
                 flowables.append(Paragraph(f"Department: {officer_metadata.get('department', '')}", styles['Normal']))
             flowables.append(Spacer(1, 12))
             
-            flowables.append(Paragraph(f"Cluster: {cluster.get('cluster_name', f'Cluster #{cluster['id']}')}", styles['Heading2']))
+            cluster_name = cluster.get('cluster_name', f"Cluster #{cluster['id']}")
+            flowables.append(Paragraph(f"Cluster: {cluster_name}", styles['Heading2']))
             flowables.append(Paragraph(f"Risk Level: {cluster.get('risk_level', 'UNKNOWN')}", styles['Normal']))
             flowables.append(Spacer(1, 12))
             
