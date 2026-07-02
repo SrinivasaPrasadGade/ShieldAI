@@ -102,6 +102,13 @@ async def evaluate():
         f.write(report_content)
         
     print(f"Evaluation complete. Report saved to {report_path}")
+    
+    # Check baseline thresholds
+    if accuracy < 0.85 or f1 < 0.80:
+        print(f"[FAIL] Quality below baseline! Accuracy: {accuracy:.2%}, F1: {f1:.2%}")
+        sys.exit(1)
+    else:
+        print(f"[PASS] Quality meets baseline! Accuracy: {accuracy:.2%}, F1: {f1:.2%}")
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
