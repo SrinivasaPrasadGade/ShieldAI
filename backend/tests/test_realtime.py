@@ -1,16 +1,19 @@
 import pytest
 import os
 import json
+import importlib
 from unittest.mock import patch, MagicMock
 
-# We need to set environment variables before importing if necessary,
-# but it's safe to just import realtime_server
-from realtime_server import app, socketio
+# Prevent realtime_server from connecting to Redis at import time
+with patch('redis.Redis.from_url'):
+    realtime_server = importlib.import_module('realtime_server')
+    app = realtime_server.app
+    socketio = realtime_server.socketio
 
 @pytest.fixture
 def client():
     # Mock redis and firebase so the test doesn't try to connect to real services
-    with patch('realtime_server.redis.Redis.from_url'), \
+    with patch('redis.Redis.from_url'), \
          patch('realtime_server.fetch_recent_alerts', return_value=[]):
         
         # Create a test client for the socketio app
@@ -43,7 +46,7 @@ def test_socketio_receives_new_alert():
     """
     Test that triggering an alert artificially pushes it to connected clients.
     """
-    with patch('realtime_server.redis.Redis.from_url'), \
+    with patch('redis.Redis.from_url'), \
          patch('realtime_server.fetch_recent_alerts', return_value=[]):
         
         # Connect a client and join room
@@ -76,3 +79,4 @@ def test_socketio_receives_new_alert():
         assert alert_event['args'][0]['severity'] == 'HIGH'
         
         client.disconnect()
+

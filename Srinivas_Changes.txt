@@ -135,3 +135,8 @@ Branch: `fix/docker-config-gaps` (merged into `main`)
 3. Frontend CI Environment & Node.js Upgrade:
    - Upgraded the Node.js version in the frontend CI pipeline (`.github/workflows/ci.yml`) from `18` to `20` to satisfy the requirement for newer Node APIs (specifically `styleText` from `node:util` used by newer bundler packages like `rolldown`).
    - Added `"engines": { "node": ">=20" }` constraint to `frontend/package.json` to ensure developer environments and CI runs leverage supported Node.js runtimes.
+
+4. Socket.IO Realtime Tests isolation:
+   - Fixed a Redis connection failure where importing the `realtime_server` inside [test_realtime.py](file:///Users/srinivasaprasad/Documents/ShieldAI/backend/tests/test_realtime.py) triggered live connections or connection error loops during test load time.
+   - Refactored imports in [test_realtime.py](file:///Users/srinivasaprasad/Documents/ShieldAI/backend/tests/test_realtime.py) to dynamically import `realtime_server` inside a `unittest.mock.patch('redis.Redis.from_url')` context manager to prevent side effects at import time and isolate testing.
+
