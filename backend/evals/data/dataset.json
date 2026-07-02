@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "text": "Hello sir, this is CBI officer. We have found a parcel in your name containing illegal drugs. Pay 50000 immediately or you will be arrested.",
+    "true_label": "SCAM",
+    "scam_type": "Digital Arrest Scam"
+  },
+  {
+    "id": 2,
+    "text": "Hi mom, I reached the office safely. Will call you back later.",
+    "true_label": "LEGITIMATE"
+  },
+  {
+    "id": 3,
+    "text": "Congratulations! You have won a lottery of 1 Million Dollars. Click this link to claim.",
+    "true_label": "SCAM",
+    "scam_type": "Lottery Scam"
+  },
+  {
+    "id": 4,
+    "text": "Hey John, are we still meeting for lunch at 12:30?",
+    "true_label": "LEGITIMATE"
+  },
+  {
+    "id": 5,
+    "text": "Your electricity bill for the last month is pending. Your power will be cut off tonight by 9 PM. Call this number to pay.",
+    "true_label": "SCAM",
+    "scam_type": "Utility Scam"
+  },
+  {
+    "id": 6,
+    "text": "Can you please send me the presentation slides from yesterday's meeting? Thanks.",
+    "true_label": "LEGITIMATE"
+  },
+  {
+    "id": 7,
+    "text": "This is customer support. Your bank account is blocked due to suspicious activity. Share your OTP to unblock.",
+    "true_label": "SCAM",
+    "scam_type": "Phishing"
+  },
+  {
+    "id": 8,
+    "text": "I've attached the signed contract for the new project. Let me know if you need anything else.",
+    "true_label": "LEGITIMATE"
+  },
+  {
+    "id": 9,
+    "text": "Earn 10,000 per day working from home just by liking YouTube videos. Join our Telegram group now.",
+    "true_label": "SCAM",
+    "scam_type": "Job Scam"
+  },
+  {
+    "id": 10,
+    "text": "Happy birthday! Hope you have a wonderful day ahead.",
+    "true_label": "LEGITIMATE"
+  }
+]

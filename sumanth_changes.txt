@@ -24,3 +24,10 @@
    - Updated `frontend/src/services/api.js` with a `markAlertRead` client function.
    - Added deduplication logic to `useSocket.js` using alert `id`s to prevent stacked alerts on disconnects/reconnects.
    - Improved `AlertFeed.jsx` by adding interactive filters (Severity, Type), a live connection banner reflecting socket status, and a "Mark as Read" checkmark workflow with local state optimistic updates.
+
+## Automated Evaluation & Tests
+
+1. Feature 2 (Automated Evaluation & Tests):
+   - Created `backend/evals/data/dataset.json` containing a seeded dataset of scam and legitimate text messages.
+   - Built `backend/evals/evaluate_scam_detector.py` script to run the dataset through the fused `ScamDetector` pipeline.
+   - The script automatically calculates Accuracy, Precision, Recall, and F1 Score, outputting a detailed markdown report.
