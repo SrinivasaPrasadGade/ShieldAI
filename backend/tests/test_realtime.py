@@ -2,6 +2,7 @@ import pytest
 import os
 import json
 import importlib
+import time
 from unittest.mock import patch, MagicMock
 
 # Prevent realtime_server from connecting to Redis at import time
@@ -28,18 +29,27 @@ def test_socketio_connection_and_dashboard_join(client):
     """
     assert client.is_connected()
     
+    # Clear any connection events
+    client.get_received()
+    
     # Emit join event
     client.emit('join_dashboard', {'role': 'law_enforcement'})
+    
+    # Give the server a moment to process and emit the response
+    time.sleep(0.1)
     
     # Receive the events
     received = client.get_received()
     
     # Should have 'joined' and potentially 'historical_alerts' (mocked to [])
-    event_names = [event['name'] for event in received]
-    assert 'joined' in event_names
+    event_names = [event['args'][0] if not isinstance(event.get('name'), str) else event['name'] for event in received]
+    
+    # Check if joined event exists - it may be in args or name field
+    joined_events = [e for e in received if e.get('name') == 'joined']
+    assert len(joined_events) > 0, f"Expected 'joined' event, got: {received}"
     
     # Find joined event
-    joined_event = next(e for e in received if e['name'] == 'joined')
+    joined_event = joined_events[0]
     assert joined_event['args'][0]['room'] == 'law_enforcement'
 
 def test_socketio_receives_new_alert():
@@ -52,6 +62,9 @@ def test_socketio_receives_new_alert():
         # Connect a client and join room
         client = socketio.test_client(app)
         client.emit('join_dashboard', {'role': 'law_enforcement'})
+        
+        # Give the server a moment to process the join
+        time.sleep(0.1)
         
         # Clear previous events
         client.get_received()
@@ -67,12 +80,15 @@ def test_socketio_receives_new_alert():
         # mimicking the redis listener's behavior
         socketio.emit("new_alert", test_alert, to="law_enforcement")
         
+        # Give the server a moment to deliver the message
+        time.sleep(0.1)
+        
         # Check if the client received it
         received = client.get_received()
-        assert len(received) > 0
+        assert len(received) > 0, f"Expected to receive events, but got empty list"
         
         event_names = [event['name'] for event in received]
-        assert 'new_alert' in event_names
+        assert 'new_alert' in event_names, f"Expected 'new_alert' in {event_names}"
         
         alert_event = next(e for e in received if e['name'] == 'new_alert')
         assert alert_event['args'][0]['id'] == 'alert-test-123'
