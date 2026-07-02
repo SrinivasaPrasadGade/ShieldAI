@@ -451,7 +451,7 @@ class GraphService:
         """Runs Louvain community detection and centrality updates on the current graph."""
         try:
             G = self._load_graph_from_db()
-            if len(G.nodes) < 3:
+            if len(G.nodes) < 2:
                 logger.info("graph_too_small_skipping_clustering", node_count=len(G.nodes))
                 return
             
@@ -459,7 +459,7 @@ class GraphService:
             partition = {}
             for component in nx.connected_components(G):
                 subgraph = G.subgraph(component)
-                if len(subgraph) < 3:
+                if len(subgraph) < 2:
                     c_id = abs(hash(min(subgraph.nodes()))) % 1000000000
                     for n in subgraph.nodes():
                         partition[n] = c_id

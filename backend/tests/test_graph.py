@@ -52,7 +52,7 @@ def test_graph_add_and_cluster():
             assert victim["entity_type"] == "victim"
             
             # Check phone node
-            phone = conn.execute("SELECT id, entity_type, risk_score, report_count, cluster_id, is_central FROM entities WHERE id = 'phone_+919900112233'").fetchone()
+            phone = conn.execute("SELECT id, entity_type, risk_score, report_count, cluster_id, is_central FROM entities WHERE id = 'phone_9900112233'").fetchone()
             assert phone is not None
             assert phone["entity_type"] == "phone"
             assert phone["risk_score"] == 0.9
@@ -64,7 +64,7 @@ def test_graph_add_and_cluster():
             assert phone["is_central"] == 1
             
             # Check relationship edge
-            edge = conn.execute("SELECT weight FROM relationships WHERE source_id = 'phone_+919900112233' AND target_id = 'victim_test_report_1'").fetchone()
+            edge = conn.execute("SELECT weight FROM relationships WHERE source_id = 'phone_9900112233' AND target_id = 'victim_test_report_1'").fetchone()
             assert edge is not None
             assert edge["weight"] == 1.0
             
