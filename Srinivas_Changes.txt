@@ -139,4 +139,6 @@ Branch: `fix/docker-config-gaps` (merged into `main`)
 4. Socket.IO Realtime Tests isolation:
    - Fixed a Redis connection failure where importing the `realtime_server` inside [test_realtime.py](file:///Users/srinivasaprasad/Documents/ShieldAI/backend/tests/test_realtime.py) triggered live connections or connection error loops during test load time.
    - Refactored imports in [test_realtime.py](file:///Users/srinivasaprasad/Documents/ShieldAI/backend/tests/test_realtime.py) to dynamically import `realtime_server` inside a `unittest.mock.patch('redis.Redis.from_url')` context manager to prevent side effects at import time and isolate testing.
+   - Restructured [realtime_server.py](file:///Users/srinivasaprasad/Documents/ShieldAI/backend/realtime_server.py) to only start the background Redis pub/sub listener thread within the `if __name__ == '__main__':` block. This prevents import-time side effects and background threads from running asynchronously during pytest execution.
+
 

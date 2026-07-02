@@ -104,10 +104,10 @@ def listen_for_alerts_with_retry():
             logger.error(f"Unexpected error in Redis listener: {general_err}. Reconnecting in 5s...")
             time.sleep(5)
 
-# Start the Redis listener thread
-threading.Thread(target=listen_for_alerts_with_retry, daemon=True).start()
-
 if __name__ == '__main__':
+    # Start the Redis listener thread only when run directly
+    threading.Thread(target=listen_for_alerts_with_retry, daemon=True).start()
+
     port = int(os.environ.get("PORT", 5001))
     logger.info(f"Starting realtime server on port {port}...")
     socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
