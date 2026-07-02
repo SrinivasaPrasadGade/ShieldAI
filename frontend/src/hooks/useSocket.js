@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_REALTIME_URL || 'http://localhost:5001';
+const REALTIME_TOKEN = import.meta.env.VITE_REALTIME_AUTH_TOKEN || '';
 
 export const useSocket = (role = 'law_enforcement') => {
   const socketRef = useRef(null);
@@ -16,6 +17,7 @@ export const useSocket = (role = 'law_enforcement') => {
       transports: ['websocket'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      query: { token: REALTIME_TOKEN },
     });
 
     socketRef.current = socket;

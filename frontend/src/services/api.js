@@ -1,6 +1,6 @@
 // frontend/src/services/api.js
 import axios from 'axios';
-
+import { auth } from './firebase';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const client = axios.create({
@@ -10,6 +10,20 @@ const client = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+client.interceptors.request.use(async (config) => {
+  if (auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {
+      console.error("Error getting auth token", e);
+    }
+  }
+  return config;
+}, (error) => Promise.reject(error));
 
 client.interceptors.response.use(
   (response) => response,

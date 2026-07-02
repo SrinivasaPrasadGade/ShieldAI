@@ -7,6 +7,8 @@ import { FraudNetworkGraph } from './components/features/FraudNetworkGraph';
 import { CitizenChat } from './components/features/CitizenChat';
 import { CurrencyChecker } from './components/features/CurrencyChecker';
 import { useSocket } from './hooks/useSocket';
+import { useAuth } from './hooks/useAuth';
+import { Login } from './components/layout/Login';
 import { ShieldAlert, X } from 'lucide-react';
 
 class ErrorBoundary extends React.Component {
@@ -41,8 +43,10 @@ function App() {
   const [activeView, setActiveView] = useState('citizen');
   const [activeAlert, setActiveAlert] = useState(null);
   const [showToast, setShowToast] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [toastData, setToastData] = useState(null);
+  
+  const { user, loading } = useAuth();
+  const isAuthenticated = !!user;
 
   const { feed, connected, latestToast } = useSocket('law_enforcement');
 
@@ -76,17 +80,6 @@ function App() {
   };
 
   const handleViewChange = (view) => {
-    if (view === 'dashboard' && !isAuthenticated) {
-      // Token check before client-side routing
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        alert("Unauthorized: Law enforcement dashboard requires a valid Firebase authentication token. Please log in first.");
-        setIsAuthenticated(false);
-        return; // Block client-side routing
-      } else {
-        setIsAuthenticated(true);
-      }
-    }
     setActiveView(view);
   };
 
@@ -147,7 +140,12 @@ function App() {
           {/* View Switch */}
           {activeView === 'dashboard' ? (
             /* Law Enforcement View */
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%', padding: '20px', gap: '20px', overflow: 'hidden' }}>
+            !isAuthenticated ? (
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                <Login />
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '100%', padding: '20px', gap: '20px', overflow: 'hidden' }}>
               {/* Left Feed */}
               <div style={{ height: '100%', overflow: 'hidden' }}>
                 <AlertFeed 
@@ -167,8 +165,9 @@ function App() {
                 <div style={{ overflow: 'hidden' }}>
                   <FraudNetworkGraph selectedCluster={null} />
                 </div>
+                </div>
               </div>
-            </div>
+            )
           ) : (
             /* Citizen View */
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', height: '100%', padding: '20px', gap: '20px', overflow: 'auto' }}>
