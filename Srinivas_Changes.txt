@@ -132,3 +132,6 @@ Branch: `fix/docker-config-gaps` (merged into `main`)
    - Restored and installed frontend package dependencies (`npm install` inside frontend) and executed the Vitest suite (`npx vitest run`), passing all frontend component tests.
    - Evaluated the model testing script using offline mock mode (`python3 evaluation/run_model_eval.py --mode mock`) to confirm the report-generating logic is functioning as designed.
 
+3. Frontend CI Environment & Node.js Upgrade:
+   - Upgraded the Node.js version in the frontend CI pipeline (`.github/workflows/ci.yml`) from `18` to `20` to satisfy the requirement for newer Node APIs (specifically `styleText` from `node:util` used by newer bundler packages like `rolldown`).
+   - Added `"engines": { "node": ">=20" }` constraint to `frontend/package.json` to ensure developer environments and CI runs leverage supported Node.js runtimes.
