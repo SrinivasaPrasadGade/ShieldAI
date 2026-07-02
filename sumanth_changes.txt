@@ -52,3 +52,15 @@
    - Wired audio inputs to GeminiService.transcribe_audio and passed the transcription to GeminiService.analyze_scam_text for fraud scoring.
    - Wired image inputs to GeminiService.analyze_currency_image for detecting counterfeit currency.
    - Formatted AI analysis verdicts into standard Twilio TwiML responses with appropriate emoji indicators.
+
+## WhatsApp Session & Multi-step flow
+
+1. Feature 5 (WhatsApp Session Management):
+   - Implemented a Redis-backed session state machine in ackend/routers/webhook.py to persist the conversational context.
+   - Built a 3-step conversational flow for filing fraud reports (Description -> Phone -> Location).
+   - Wired the completed flow into citizen_service.create_report() to generate an official reference number and return it via WhatsApp.
+   
+2. Feature 6 (Twilio Webhook Testing):
+   - Created ackend/tests/test_webhook.py to test the Twilio signature validation endpoint.
+   - Added automated tests to ensure invalid signatures are blocked (HTTP 403), while valid signatures are accepted (HTTP 200).
+   - Validated that placeholder credentials and debug mode gracefully log warnings without fully blocking requests.
