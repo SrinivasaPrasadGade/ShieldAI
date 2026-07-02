@@ -40,7 +40,7 @@ def test_graph_evidence_package_dispatches_celery(mock_delay):
     task_id = asyncio.run(graph_svc.start_evidence_package(cluster_id=101))
 
     assert task_id is not None
-    mock_delay.assert_called_once_with(101, task_id)
+    mock_delay.assert_called_once_with(101, task_id, None)
 
 @patch("tasks.currency_tasks.get_currency_analyzer")
 def test_currency_celery_task_runs_async_verification(mock_get_analyzer):
@@ -72,4 +72,8 @@ def test_graph_celery_task_runs_async_evidence_generation(mock_get_evidence):
 
     generate_evidence_task(cluster_id=101, task_id="test_task_id")
 
-    mock_evidence.generate_evidence_package.assert_called_once_with(cluster_id=101, task_id="test_task_id")
+    mock_evidence.generate_evidence_package.assert_called_once_with(
+        cluster_id=101, 
+        task_id="test_task_id", 
+        officer_metadata=None
+    )

@@ -268,7 +268,7 @@ class GraphService:
 
         return clusters
 
-    async def start_evidence_package(self, cluster_id: int) -> str:
+    async def start_evidence_package(self, cluster_id: int, officer_metadata: dict = None) -> str:
         """
         Start async evidence package generation via Celery.
 
@@ -282,7 +282,7 @@ class GraphService:
         
         # Dispatch Celery task
         from tasks.graph_tasks import generate_evidence_task
-        generate_evidence_task.delay(cluster_id, task_id)
+        generate_evidence_task.delay(cluster_id, task_id, officer_metadata)
         
         logger.info("evidence_package_queued_to_celery", task_id=task_id, cluster_id=cluster_id)
         return task_id
