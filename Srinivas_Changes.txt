@@ -121,3 +121,14 @@ Branch: `fix/docker-config-gaps` (merged into `main`)
 
 4. backend/services/evidence_service.py:
    - Updated the evidence signature secret retrieval to directly use `settings.SECRET_KEY` instead of a dynamic fallback.
+
+## Testing, Verification, and ML Model Finalization
+
+1. Zero-Shot Classifier Model Cache Finalization:
+   - Resumed and finalized the interrupted download of the `facebook/bart-large-mnli` model weights. The 1.63 GB model weights are now fully cached and verified in the local Hugging Face cache (`~/.cache/huggingface/hub/`), ensuring the zero-shot classifier is fully operational.
+
+2. Test Suite Runs and Execution:
+   - Ran all 56 backend unit/integration tests (`pytest tests/`), including zero-shot and risk fusion pipelines. All 56 tests passed cleanly.
+   - Restored and installed frontend package dependencies (`npm install` inside frontend) and executed the Vitest suite (`npx vitest run`), passing all frontend component tests.
+   - Evaluated the model testing script using offline mock mode (`python3 evaluation/run_model_eval.py --mode mock`) to confirm the report-generating logic is functioning as designed.
+

@@ -1,0 +1,1777 @@
+{
+  "timestamp": "2026-07-02T14:38:20Z",
+  "reports": [
+    {
+      "model": "Keyword Heuristic",
+      "total": 68,
+      "confusion_matrix": {
+        "tp": 5,
+        "tn": 23,
+        "fp": 0,
+        "fn": 40
+      },
+      "accuracy": 0.4118,
+      "precision": 1.0,
+      "recall": 0.1111,
+      "f1": 0.2,
+      "fpr": 0.0,
+      "fnr": 0.8889,
+      "latency_p50_ms": 0.0,
+      "latency_p95_ms": 0.0,
+      "per_language": {
+        "en": {
+          "total": 43,
+          "accuracy": 0.46511627906976744,
+          "precision": 1.0,
+          "recall": 0.14814814814814814,
+          "f1": 0.25806451612903225
+        },
+        "hi": {
+          "total": 6,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "hinglish": {
+          "total": 13,
+          "accuracy": 0.3076923076923077,
+          "precision": 1.0,
+          "recall": 0.1,
+          "f1": 0.18181818181818182
+        },
+        "te": {
+          "total": 3,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "ta": {
+          "total": 3,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "per_type": {
+        "digital_arrest": {
+          "total": 15,
+          "accuracy": 0.26666666666666666,
+          "precision": 1.0,
+          "recall": 0.26666666666666666,
+          "f1": 0.4210526315789474
+        },
+        "kyc_otp": {
+          "total": 9,
+          "accuracy": 0.1111111111111111,
+          "precision": 1.0,
+          "recall": 0.1111111111111111,
+          "f1": 0.19999999999999998
+        },
+        "investment_fraud": {
+          "total": 6,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "customs_parcel": {
+          "total": 6,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "trai_sim_block": {
+          "total": 3,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "loan_app_harassment": {
+          "total": 3,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "lottery_fraud": {
+          "total": 2,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "utility_scam": {
+          "total": 1,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "social_chat": {
+          "total": 7,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "bank_communication": {
+          "total": 4,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "delivery_update": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "work_communication": {
+          "total": 2,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "travel_alert": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "subscription_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "ecommerce_notification": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "insurance_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "utility_bill": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "appointment_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "greeting": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "entertainment": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "legitimate_police": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "results": [
+        {
+          "id": "da_001",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_002",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.85,
+          "label": "HIGH",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_003",
+          "type": "digital_arrest",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_004",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_005",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.65,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_006",
+          "type": "digital_arrest",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_007",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_008",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_009",
+          "type": "digital_arrest",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_010",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.55,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_011",
+          "type": "digital_arrest",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_012",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_013",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_014",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_015",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.45,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_001",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_002",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_003",
+          "type": "kyc_otp",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_004",
+          "type": "kyc_otp",
+          "lang": "hinglish",
+          "score": 0.35,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_005",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.4,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_006",
+          "type": "kyc_otp",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_007",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_008",
+          "type": "kyc_otp",
+          "lang": "hi",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_001",
+          "type": "investment_fraud",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_002",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_003",
+          "type": "investment_fraud",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_004",
+          "type": "investment_fraud",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_005",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_006",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_001",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_002",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_003",
+          "type": "customs_parcel",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_004",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_005",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_001",
+          "type": "trai_sim_block",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_002",
+          "type": "trai_sim_block",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_003",
+          "type": "trai_sim_block",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_001",
+          "type": "loan_app_harassment",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_002",
+          "type": "loan_app_harassment",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_003",
+          "type": "loan_app_harassment",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "lot_001",
+          "type": "lottery_fraud",
+          "lang": "en",
+          "score": 0.35,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "lot_002",
+          "type": "lottery_fraud",
+          "lang": "en",
+          "score": 0.15,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "elec_001",
+          "type": "utility_scam",
+          "lang": "en",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_001",
+          "type": "social_chat",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_002",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_003",
+          "type": "delivery_update",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_004",
+          "type": "social_chat",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_005",
+          "type": "work_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_006",
+          "type": "social_chat",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_007",
+          "type": "social_chat",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_008",
+          "type": "work_communication",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_009",
+          "type": "travel_alert",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_010",
+          "type": "subscription_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_011",
+          "type": "social_chat",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_012",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_013",
+          "type": "ecommerce_notification",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_014",
+          "type": "insurance_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_015",
+          "type": "social_chat",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_016",
+          "type": "utility_bill",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_017",
+          "type": "appointment_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_018",
+          "type": "greeting",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_019",
+          "type": "entertainment",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_020",
+          "type": "social_chat",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_001",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_002",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_003",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_004",
+          "type": "legitimate_police",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_005",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        }
+      ]
+    },
+    {
+      "model": "Gemini AI (mock)",
+      "total": 68,
+      "confusion_matrix": {
+        "tp": 5,
+        "tn": 23,
+        "fp": 0,
+        "fn": 40
+      },
+      "accuracy": 0.4118,
+      "precision": 1.0,
+      "recall": 0.1111,
+      "f1": 0.2,
+      "fpr": 0.0,
+      "fnr": 0.8889,
+      "latency_p50_ms": 0.0,
+      "latency_p95_ms": 0.0,
+      "per_language": {
+        "en": {
+          "total": 43,
+          "accuracy": 0.46511627906976744,
+          "precision": 1.0,
+          "recall": 0.14814814814814814,
+          "f1": 0.25806451612903225
+        },
+        "hi": {
+          "total": 6,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "hinglish": {
+          "total": 13,
+          "accuracy": 0.3076923076923077,
+          "precision": 1.0,
+          "recall": 0.1,
+          "f1": 0.18181818181818182
+        },
+        "te": {
+          "total": 3,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "ta": {
+          "total": 3,
+          "accuracy": 0.3333333333333333,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "per_type": {
+        "digital_arrest": {
+          "total": 15,
+          "accuracy": 0.26666666666666666,
+          "precision": 1.0,
+          "recall": 0.26666666666666666,
+          "f1": 0.4210526315789474
+        },
+        "kyc_otp": {
+          "total": 9,
+          "accuracy": 0.1111111111111111,
+          "precision": 1.0,
+          "recall": 0.1111111111111111,
+          "f1": 0.19999999999999998
+        },
+        "investment_fraud": {
+          "total": 6,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "customs_parcel": {
+          "total": 6,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "trai_sim_block": {
+          "total": 3,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "loan_app_harassment": {
+          "total": 3,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "lottery_fraud": {
+          "total": 2,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "utility_scam": {
+          "total": 1,
+          "accuracy": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "social_chat": {
+          "total": 7,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "bank_communication": {
+          "total": 4,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "delivery_update": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "work_communication": {
+          "total": 2,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "travel_alert": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "subscription_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "ecommerce_notification": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "insurance_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "utility_bill": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "appointment_reminder": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "greeting": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "entertainment": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        },
+        "legitimate_police": {
+          "total": 1,
+          "accuracy": 1.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0
+        }
+      },
+      "results": [
+        {
+          "id": "da_001",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_002",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.85,
+          "label": "HIGH",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_003",
+          "type": "digital_arrest",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_004",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_005",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.65,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_006",
+          "type": "digital_arrest",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_007",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_008",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_009",
+          "type": "digital_arrest",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_010",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.55,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_011",
+          "type": "digital_arrest",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_012",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_013",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_014",
+          "type": "digital_arrest",
+          "lang": "hinglish",
+          "score": 0.3,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "da_015",
+          "type": "digital_arrest",
+          "lang": "en",
+          "score": 0.45,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_001",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_002",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_003",
+          "type": "kyc_otp",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_004",
+          "type": "kyc_otp",
+          "lang": "hinglish",
+          "score": 0.35,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_005",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.4,
+          "label": "MEDIUM",
+          "verdict": "TP",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_006",
+          "type": "kyc_otp",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_007",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "kyc_008",
+          "type": "kyc_otp",
+          "lang": "hi",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_001",
+          "type": "investment_fraud",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_002",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_003",
+          "type": "investment_fraud",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_004",
+          "type": "investment_fraud",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_005",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "inv_006",
+          "type": "investment_fraud",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_001",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_002",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_003",
+          "type": "customs_parcel",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_004",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "cust_005",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.25,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_001",
+          "type": "trai_sim_block",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_002",
+          "type": "trai_sim_block",
+          "lang": "hinglish",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "trai_003",
+          "type": "trai_sim_block",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_001",
+          "type": "loan_app_harassment",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_002",
+          "type": "loan_app_harassment",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "loan_003",
+          "type": "loan_app_harassment",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "lot_001",
+          "type": "lottery_fraud",
+          "lang": "en",
+          "score": 0.35,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "lot_002",
+          "type": "lottery_fraud",
+          "lang": "en",
+          "score": 0.15,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "elec_001",
+          "type": "utility_scam",
+          "lang": "en",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_001",
+          "type": "social_chat",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_002",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_003",
+          "type": "delivery_update",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_004",
+          "type": "social_chat",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_005",
+          "type": "work_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_006",
+          "type": "social_chat",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_007",
+          "type": "social_chat",
+          "lang": "ta",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_008",
+          "type": "work_communication",
+          "lang": "te",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_009",
+          "type": "travel_alert",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_010",
+          "type": "subscription_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_011",
+          "type": "social_chat",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_012",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_013",
+          "type": "ecommerce_notification",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_014",
+          "type": "insurance_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_015",
+          "type": "social_chat",
+          "lang": "hi",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_016",
+          "type": "utility_bill",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_017",
+          "type": "appointment_reminder",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_018",
+          "type": "greeting",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_019",
+          "type": "entertainment",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "legit_020",
+          "type": "social_chat",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_001",
+          "type": "kyc_otp",
+          "lang": "en",
+          "score": 0.1,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_002",
+          "type": "customs_parcel",
+          "lang": "en",
+          "score": 0.2,
+          "label": "LOW",
+          "verdict": "FN",
+          "passed": false,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_003",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_004",
+          "type": "legitimate_police",
+          "lang": "hinglish",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        },
+        {
+          "id": "edge_005",
+          "type": "bank_communication",
+          "lang": "en",
+          "score": 0.0,
+          "label": "LOW",
+          "verdict": "TN",
+          "passed": true,
+          "latency_ms": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -724,7 +724,7 @@ Current frontend gap:
 
 ### Challenges / risks to know in a review
 
-- Zero-shot integration is partially inconsistent: `zero_shot_classifier.py` and `risk_fusion_service.py` exist, but `ScamDetector` still has its own legacy classifier path and an undefined `TRANSFORMERS_AVAILABLE`.
+- ~~Zero-shot integration is partially inconsistent: `zero_shot_classifier.py` and `risk_fusion_service.py` exist, but `ScamDetector` still has its own legacy classifier path and an undefined `TRANSFORMERS_AVAILABLE`.~~ — **Fixed** (`fix/zero-shot-transformers-available`): The import issues and undefined variable have been resolved, and the zero-shot classifier model weights are now fully cached locally and verified.
 - Frontend dashboard auth is incomplete: token is checked locally but not attached to API calls.
 - ~~Evidence signature secret currently falls back to a development value because `SECRET_KEY` is not declared in settings.~~ — **Fixed** (`fix/docker-config-gaps`): `SECRET_KEY` is now fully declared in settings.
 - Currency verification results are not clearly written into Firestore `currency_checks`, even though stats/map endpoints read from there.
@@ -733,7 +733,7 @@ Current frontend gap:
 - Firestore and SQLite split ownership can confuse maintainers; document which data lives where.
 - Default FastAPI docs behavior conflicts with README because `docs_url` is disabled unless `DEBUG=true`.
 - ~~`frontend/Dockerfile.frontend` exposes port `5173`, but package/compose run the app on `5174`.~~ — **Fixed** (`fix/docker-config-gaps`): `frontend/Dockerfile.frontend` now exposes port `5174`.
-- The local environment here did not have Python test dependencies installed, so I could not execute the pytest suite without installing packages.
+- ~~The local environment here did not have Python test dependencies installed, so I could not execute the pytest suite without installing packages.~~ — **Resolved**: Local environment has been fully configured, dependencies installed, and both backend (56 tests) and frontend (2 tests) suites run and verified successfully.
 
 ## 8. File Map
 
