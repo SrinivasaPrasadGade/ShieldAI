@@ -58,6 +58,7 @@ async def create_report(request: CitizenReportRequest):
             phone_number=request.phone_number,
             location=request.location,
             contact_email=request.contact_email,
+            source=request.source,
         )
         return result
     except Exception as e:

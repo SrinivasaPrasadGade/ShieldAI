@@ -1,6 +1,6 @@
 // frontend/src/components/features/CitizenChat.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ShieldAlert, Languages, AlertTriangle, ArrowRight, User, Bot, HelpCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { Send, ShieldAlert, Languages, AlertTriangle, ArrowRight, User, Bot, HelpCircle, FileText, CheckCircle2, RefreshCw, Download } from 'lucide-react';
 import { api } from '../../services/api';
 
 export const CitizenChat = () => {
@@ -18,7 +18,7 @@ export const CitizenChat = () => {
   const [reportForm, setReportForm] = useState({ phone: '', location: '', email: '' });
   const [reportResult, setReportResult] = useState(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [sessionId] = useState(() => {
+  const [sessionId, setSessionId] = useState(() => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return `sess-${crypto.randomUUID()}`;
     }
@@ -65,7 +65,8 @@ export const CitizenChat = () => {
         text: data.response,
         risk: data.risk_assessment,
         report_link: data.report_link,
-        original_user_text: userText
+        original_user_text: userText,
+        error: data.error
       };
       
       setChatHistory((prev) => [...prev, newResponse]);
@@ -95,7 +96,8 @@ export const CitizenChat = () => {
         description,
         reportForm.phone,
         reportForm.location,
-        reportForm.email
+        reportForm.email,
+        "chat"
       );
       setReportResult({ ...result, msgIndex });
       setReportingMsgIndex(null);
@@ -105,6 +107,41 @@ export const CitizenChat = () => {
     } finally {
       setIsSubmittingReport(false);
     }
+  };
+
+  const handleReset = () => {
+    const newSession = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
+      ? `sess-${crypto.randomUUID()}` 
+      : `sess-${Math.random().toString(36).substring(2, 9)}`;
+    setSessionId(newSession);
+    setChatHistory([{
+      role: 'assistant',
+      text: 'Hello! I am ShieldAI\'s Citizen Fraud Shield. If you think someone is trying to scam you, tell me what happened in any language. I will evaluate it instantly.',
+      isSystem: true
+    }]);
+    setReportingMsgIndex(null);
+    setReportResult(null);
+  };
+
+  const handleExport = () => {
+    const textContent = chatHistory.map(msg => {
+      const role = msg.role === 'user' ? 'You' : 'ShieldAI';
+      let content = `${role}:\n${msg.text}\n`;
+      if (msg.risk?.detected_risk) {
+        content += `[WARNING: CONFIRMED ${msg.risk.fraud_type || 'SCAM'} - ${msg.risk.risk_level}]\n`;
+      }
+      return content;
+    }).join('\n----------------------------------------\n\n');
+    
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shieldai-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -124,19 +161,41 @@ export const CitizenChat = () => {
           </div>
         </div>
         
-        {/* Language select */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-          <Languages size={14} color="var(--text-secondary)" />
-          <select 
-            value={language} 
-            onChange={(e) => setLanguage(e.target.value)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.85rem' }}
+        {/* Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            onClick={handleReset}
+            title="Reset Conversation"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '8px', borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', transition: '0.2s' }}
+            onMouseOver={e => { e.currentTarget.style.color = 'var(--accent-red)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
+            onMouseOut={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-glass)'; }}
           >
-            <option value="en" style={{ backgroundColor: 'var(--bg-secondary)' }}>English</option>
-            <option value="hi" style={{ backgroundColor: 'var(--bg-secondary)' }}>Hinglish / Hindi</option>
-            <option value="te" style={{ backgroundColor: 'var(--bg-secondary)' }}>Telugu</option>
-            <option value="ta" style={{ backgroundColor: 'var(--bg-secondary)' }}>Tamil</option>
-          </select>
+            <RefreshCw size={14} />
+          </button>
+          
+          <button 
+            onClick={handleExport}
+            title="Export Chat"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', padding: '8px', borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', transition: '0.2s' }}
+            onMouseOver={e => { e.currentTarget.style.color = 'var(--accent-cyan)'; e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
+            onMouseOut={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-glass)'; }}
+          >
+            <Download size={14} />
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-tertiary)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)', marginLeft: '4px' }}>
+            <Languages size={14} color="var(--text-secondary)" />
+            <select 
+              value={language} 
+              onChange={(e) => setLanguage(e.target.value)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: '0.85rem' }}
+            >
+              <option value="en" style={{ backgroundColor: 'var(--bg-secondary)' }}>English</option>
+              <option value="hi" style={{ backgroundColor: 'var(--bg-secondary)' }}>Hinglish / Hindi</option>
+              <option value="te" style={{ backgroundColor: 'var(--bg-secondary)' }}>Telugu</option>
+              <option value="ta" style={{ backgroundColor: 'var(--bg-secondary)' }}>Tamil</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -169,7 +228,13 @@ export const CitizenChat = () => {
                 lineHeight: '1.5',
                 whiteSpace: 'pre-wrap'
               }}>
-                {msg.text}
+                {msg.error === 'rate_limit' ? (
+                  <div style={{ color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
+                    <AlertTriangle size={16} /> {msg.text}
+                  </div>
+                ) : (
+                  msg.text
+                )}
                 
                 {/* Risk assessment alert container */}
                 {msg.risk && msg.risk.detected_risk && (

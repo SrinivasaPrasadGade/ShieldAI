@@ -39,3 +39,7 @@
    - Integrated a seamless inline incident reporting flow: when the AI detects a scam, it now presents a "Report Incident to Cyber Cell" button.
    - Built an interactive embedded form to optionally collect the victim's phone number, location, and email.
    - Connected the form to `api.submitReport` and added a success state displaying the official `reference_number` and next steps.
+   - Added Conversation Reset and Export (.txt file download) buttons to the UI header.
+   - Intercepted rate-limit API errors to display a visual warning banner when messaging too quickly.
+   - Passed `source="chat"` when reports are created from the chat to track `chat_conversions` in Firestore system stats.
+   - Updated Gemini prompt to override the language dropdown and forcefully reply in the language the user types in.

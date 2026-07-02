@@ -431,6 +431,7 @@ class CitizenChatResponse(BaseModel):
     risk_assessment: Optional[Dict[str, Any]] = None
     report_link: Optional[str] = None
     session_id: str
+    error: Optional[str] = None
 
 
 class CitizenReportRequest(BaseModel):
@@ -439,6 +440,7 @@ class CitizenReportRequest(BaseModel):
     phone_number: Optional[str] = None
     location: Optional[str] = None
     contact_email: Optional[str] = None
+    source: Optional[str] = "web"
 
     @field_validator("contact_email")
     @classmethod

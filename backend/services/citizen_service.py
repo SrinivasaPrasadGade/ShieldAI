@@ -62,6 +62,7 @@ class CitizenService:
                     "risk_assessment": None,
                     "report_link": None,
                     "session_id": session_id,
+                    "error": "rate_limit"
                 }
 
             # Retrieve chat history
@@ -124,6 +125,7 @@ class CitizenService:
         phone_number: Optional[str] = None,
         location: Optional[str] = None,
         contact_email: Optional[str] = None,
+        source: str = "web",
     ) -> dict:
         """
         Create a fraud report from a citizen submission.
@@ -188,7 +190,10 @@ class CitizenService:
                 batch.set(report_ref, report_data)
                 
                 stats_ref = self.db.collection("system_stats").document("global_counts")
-                batch.set(stats_ref, {"total_reports": firestore.Increment(1)}, merge=True)
+                stats_updates = {"total_reports": firestore.Increment(1)}
+                if source == "chat":
+                    stats_updates["chat_conversions"] = firestore.Increment(1)
+                batch.set(stats_ref, stats_updates, merge=True)
                 
                 batch.commit()
                 logger.info("citizen_report_created", report_id=report_id, reference=reference_number)

@@ -116,12 +116,13 @@ export const api = {
     return res.data;
   },
 
-  submitReport: async (description, phoneNumber = '', location = '', contactEmail = '') => {
+  submitReport: async (description, phoneNumber = '', location = '', contactEmail = '', source = 'web') => {
     const res = await client.post('/api/citizen/report', {
       description,
       phone_number: phoneNumber,
       location,
       contact_email: contactEmail,
+      source,
     });
     return res.data;
   },
