@@ -141,13 +141,55 @@ async def whatsapp_webhook(request: Request):
             # Handle media
             num_media = int(form_data.get("NumMedia", "0"))
             if num_media > 0:
+                media_url = form_data.get("MediaUrl0", "")
                 media_type = form_data.get("MediaContentType0", "")
-                if media_type.startswith("audio/"):
-                    response_text = "Audio analysis via WhatsApp is coming soon. For now, please type out your issue."
-                elif media_type.startswith("image/"):
-                    response_text = "Image analysis (like for counterfeit currency) via WhatsApp is coming soon."
-                else:
-                    response_text = "We currently cannot process this type of media. Please describe your issue in text."
+                
+                try:
+                    import httpx
+                    auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(media_url, auth=auth)
+                        resp.raise_for_status()
+                        media_bytes = resp.content
+
+                    if media_type.startswith("audio/"):
+                        from services.gemini_service import get_gemini_service
+                        gemini = get_gemini_service()
+                        transcript = await gemini.transcribe_audio(media_bytes, mime_type=media_type)
+                        
+                        if transcript:
+                            analysis = await gemini.analyze_scam_text(transcript)
+                            risk_label = analysis.get("risk_label", "UNKNOWN")
+                            explanation = analysis.get("explanation", "")
+                            
+                            response_text = (
+                                f"🎤 *Audio Transcript:*\n_{transcript}_\n\n"
+                                f"🛡️ *Scam Analysis:*\n"
+                                f"Risk Level: {risk_label}\n"
+                                f"Analysis: {explanation}"
+                            )
+                        else:
+                            response_text = "Sorry, I couldn't understand the audio."
+
+                    elif media_type.startswith("image/"):
+                        from services.gemini_service import get_gemini_service
+                        gemini = get_gemini_service()
+                        analysis = await gemini.analyze_currency_image(media_bytes, mime_type=media_type)
+                        verdict = analysis.get("verdict", "UNKNOWN")
+                        analysis_text = analysis.get("analysis", "")
+                        
+                        emoji = "🔴" if verdict.upper() == "FAKE" else "🟢" if verdict.upper() == "GENUINE" else "🟡"
+                        
+                        response_text = (
+                            f"{emoji} *Currency Analysis Verdict: {verdict.upper()}*\n\n"
+                            f"{analysis_text}"
+                        )
+                    else:
+                        response_text = "We currently cannot process this type of media. Please describe your issue in text."
+                        
+                except Exception as e:
+                    logger.error("whatsapp_media_processing_failed", error=str(e))
+                    response_text = "Sorry, we encountered an error processing your media."
             else:
                 # Route through CitizenService chat to maintain context and rate limits
                 try:
