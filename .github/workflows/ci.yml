@@ -29,8 +29,8 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         FIREBASE_CREDENTIALS_PATH: ""
         SQLITE_DB_PATH: ":memory:"
-        ENABLE_BERT: "false"
-        ENABLE_ZERO_SHOT: "false"
+        ENABLE_BERT: "true"
+        ENABLE_ZERO_SHOT: "true"
     - name: Run Model Evaluation
       run: |
         cd backend
@@ -39,8 +39,8 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         FIREBASE_CREDENTIALS_PATH: ""
         SQLITE_DB_PATH: ":memory:"
-        ENABLE_BERT: "false"
-        ENABLE_ZERO_SHOT: "false"
+        ENABLE_BERT: "true"
+        ENABLE_ZERO_SHOT: "true"
 
   test-frontend:
     runs-on: ubuntu-latest
